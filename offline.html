@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f172a">
+<title>Tiada Sambungan — SPDK</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background:linear-gradient(145deg,#0d2b5e 0%,#1a56db 100%);
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+/* ── Card Clay 3D ── */
+.card{
+  background:#fff;
+  border-radius:24px;
+  padding:40px 32px 36px;
+  max-width:480px;
+  width:100%;
+  text-align:center;
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.4),
+    0 8px 20px rgba(0,0,0,.3),
+    inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+/* ── Logo ── */
+.logo{
+  width:80px;
+  height:80px;
+  object-fit:contain;
+  margin-bottom:24px;
+}
+
+/* ── Colour dots ── */
+.dots{display:flex;justify-content:center;gap:8px;margin-bottom:20px}
+.dots span{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+/* ── WiFi icon wrap ── */
+.wifi-wrap{
+  width:72px;
+  height:72px;
+  background:#e0f6ff;
+  border-radius:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto 24px;
+  box-shadow:0 4px 12px rgba(0,174,239,.15);
+  animation:pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 4px 12px rgba(0,174,239,.15)}
+  50%{box-shadow:0 4px 24px rgba(0,174,239,.4)}
+}
+.wifi-wrap svg{
+  width:36px;height:36px;
+  stroke:#00aeef;fill:none;
+  stroke-width:2.5;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+
+/* ── Text ── */
+h1{font-size:24px;font-weight:700;color:#0d2b5e;margin-bottom:10px;line-height:1.2}
+.subtitle{font-size:14px;color:#64748b;line-height:1.6;margin-bottom:32px}
+
+/* ── Button Clay 3D ── */
+.btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  padding:15px 24px;
+  background:#e63946;
+  color:#fff;
+  border:none;
+  border-radius:16px;
+  font-size:15px;
+  font-weight:700;
+  cursor:pointer;
+  font-family:inherit;
+  box-shadow:
+    0 6px 0 #a8242e,
+    0 10px 18px rgba(230,57,70,.4);
+  transform:translateY(0);
+  transition:box-shadow .12s ease,transform .12s ease;
+  animation:bounce .6s cubic-bezier(.36,.07,.19,.97) .3s both;
+}
+@keyframes bounce{
+  0%{transform:translateY(0)}
+  30%{transform:translateY(-8px)}
+  60%{transform:translateY(-3px)}
+  80%{transform:translateY(-5px)}
+  100%{transform:translateY(0)}
+}
+.btn:hover{
+  box-shadow:0 3px 0 #a8242e,0 6px 12px rgba(230,57,70,.3);
+  transform:translateY(2px);
+}
+.btn:active{
+  box-shadow:none;
+  transform:translateY(6px);
+}
+.btn svg{
+  width:16px;height:16px;
+  stroke:#fff;fill:none;
+  stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;
+}
+
+/* ── Toast Clay 3D ── */
+.toast{
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%) translateY(100px);
+  background:#fff;
+  border-radius:20px;
+  padding:14px 20px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  box-shadow:
+    0 12px 40px rgba(0,0,0,.25),
+    0 4px 12px rgba(0,0,0,.15),
+    inset 0 1px 0 rgba(255,255,255,.9);
+  font-size:13px;
+  font-weight:500;
+  color:#0d2b5e;
+  max-width:360px;
+  width:calc(100% - 48px);
+  opacity:0;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .3s ease;
+  pointer-events:none;
+  z-index:100;
+  white-space:nowrap;
+  overflow:hidden;
+}
+.toast::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:3px;
+  background:#f4c430;
+  border-radius:2px;
+}
+.toast.show{
+  transform:translateX(-50%) translateY(0);
+  opacity:1;
+}
+.toast.hide{
+  transform:translateX(-50%) translateY(100px);
+  opacity:0;
+}
+.toast-icon{font-size:18px;flex-shrink:0}
+.toast-text{white-space:normal;line-height:1.4}
+
+/* ── Responsive ── */
+@media(max-width:480px){
+  body{padding:0;align-items:flex-end}
+  .card{border-radius:24px 24px 0 0;padding:32px 24px 40px;max-width:100%}
+  .toast{
+    left:16px;
+    right:16px;
+    bottom:16px;
+    width:auto;
+    max-width:none;
+    transform:translateX(0) translateY(100px);
+  }
+  .toast.show{transform:translateX(0) translateY(0)}
+  .toast.hide{transform:translateX(0) translateY(100px)}
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <img src="icon-192.png" alt="SPDK" class="logo">
+
+  <div class="dots">
+    <span style="background:#e63946"></span>
+    <span style="background:#1a56db"></span>
+    <span style="background:#f4c430"></span>
+    <span style="background:#2dc653"></span>
+  </div>
+
+  <div class="wifi-wrap">
+    <svg viewBox="0 0 24 24">
+      <line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+      <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+      <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+      <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+      <line x1="12" y1="20" x2="12.01" y2="20"/>
+    </svg>
+  </div>
+
+  <h1>Tiada Sambungan</h1>
+  <p class="subtitle">Sila semak WiFi atau data anda</p>
+
+  <button class="btn" onclick="cubaSemula()">
+    <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    Cuba Semula
+  </button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon">⚠️</span>
+  <span class="toast-text">Masih tiada sambungan. Cuba lagi sebentar.</span>
+</div>
+
+<script>
+var toastTimer = null;
+
+function cubaSemula() {
+  if (navigator.onLine) {
+    window.location.reload();
+    return;
+  }
+  paparToast();
+}
+
+function paparToast() {
+  var t = document.getElementById('toast');
+  if (toastTimer) clearTimeout(toastTimer);
+  t.classList.remove('hide');
+  t.classList.add('show');
+  toastTimer = setTimeout(function() {
+    t.classList.remove('show');
+    t.classList.add('hide');
+  }, 3000);
+}
+</script>
+</body>
+</html>
