@@ -62,6 +62,30 @@ SPDK ITU adalah **portal pengurusan kursus dalaman Institut Teknologi Unggas (IT
 
 ---
 
+## 🎨 Clay 3D Design System
+
+Portal SPDK menggunakan tema **Clay 3D** — design language yang konsisten merentasi semua halaman:
+
+| Elemen | Style |
+|---|---|
+| Background auth pages | `linear-gradient(145deg, #0d2b5e → #1a56db)` |
+| Kad utama | `border-radius: 28px`, Clay 4-layer shadow |
+| Button primary | Clay 3D gradient biru, press effect, `btnpop` animation |
+| Input fields | `border-radius: 14px`, inset shadow, focus ring biru |
+| SPDK dots | 4 warna: merah `#e63946`, biru `#1a56db`, kuning `#f4c430`, hijau `#2dc653` |
+| Stat cards | `border-radius: 16px`, Clay shadow, `cardPop` animation |
+| Counter | Rolling number animation dari 0 ke nilai sebenar |
+
+**Halaman yang dah apply Clay 3D:**
+- ✅ Login
+- ✅ Daftar Akaun
+- ✅ Dashboard Peserta
+- ✅ Lupa Kata Laluan
+- ✅ Reset Kata Laluan
+- ⏳ Panel Admin (dalam proses)
+
+---
+
 ## 📱 PWA (Progressive Web App)
 
 Repo ini berfungsi sebagai **PWA shell** untuk SPDK ITU:
