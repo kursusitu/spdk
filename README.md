@@ -82,7 +82,7 @@ Portal SPDK menggunakan tema **Clay 3D** — design language yang konsisten mere
 - ✅ Dashboard Peserta
 - ✅ Lupa Kata Laluan
 - ✅ Reset Kata Laluan
-- ⏳ Panel Admin (dalam proses)
+- ✅ Panel Admin
 
 ---
 
