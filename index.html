@@ -339,7 +339,7 @@ async function loadDashPeserta(){
   try{
     const r=await api('getDashboardPeserta');
     if(!r.success){toast(r.message||'Ralat.','danger');return}
-    const d=r.data||{};
+    const d=r||{};
     $('dc').innerHTML=`
     <div class="sg">
       <div class="sc"><div class="si" style="background:#eff6ff">📚</div><div class="sn">${d.jumlahDaftar||0}</div><div class="sl">Pendaftaran</div></div>
@@ -622,7 +622,7 @@ function pgLaporan(){
   (async()=>{
     try{
       const r=await api('getLaporan');
-      const d=r.data||{};
+      const d=r||{};
       $('lapc').innerHTML=`
       <div class="sg">
         <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.statPeserta||0}</div><div class="sl">Jumlah Pengguna</div></div>
