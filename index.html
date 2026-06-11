@@ -4,158 +4,751 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1a56db">
-<meta http-equiv="refresh" content="2; url=https://script.google.com/macros/s/AKfycbzRjduXyfm6jGpKfMv37SK2tANg3_4E_JF6YFG1b8_Fappcs9gnQLNJJJw_mfPdKvsSjw/exec">
 <link rel="manifest" href="manifest.json">
-<title>SPDK ITU</title>
+<title>SPDK ITU — Sistem Pendigitalan Data Kursus</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{
-  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
-  background:linear-gradient(145deg,#0d2b5e 0%,#1a56db 100%);
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:24px;
+:root{
+  --primary:#1a56db;--primary-dark:#1e3a8a;--primary-mid:#1e429f;
+  --accent:#00aeef;--bg:#f3f4f6;--white:#fff;
+  --text:#111827;--muted:#6b7280;--border:#e5e7eb;
+  --danger:#e02424;--success:#057a55;--warning:#d97706;
 }
-
-/* ── Card Clay 3D ── */
-.card{
-  background:#fff;
-  border-radius:24px;
-  padding:40px 32px 36px;
-  max-width:480px;
-  width:100%;
-  text-align:center;
-  box-shadow:
-    0 20px 60px rgba(0,0,0,.4),
-    0 8px 20px rgba(0,0,0,.3),
-    inset 0 1px 0 rgba(255,255,255,.8);
-}
-
-/* ── Logo ── */
-.logo{
-  width:72px;
-  height:72px;
-  object-fit:contain;
-  margin-bottom:16px;
-  animation:pop .5s cubic-bezier(.34,1.56,.64,1) both;
-}
-@keyframes pop{
-  0%{transform:scale(.5);opacity:0}
-  70%{transform:scale(1.08)}
-  100%{transform:scale(1);opacity:1}
-}
-
-/* ── Colour dots — bouncing bergilir ── */
-.dots{
-  display:flex;
-  justify-content:center;
-  gap:8px;
-  margin-bottom:20px;
-}
-.dots span{
-  width:10px;height:10px;
-  border-radius:50%;
-  display:inline-block;
-  animation:dotBounce .8s ease-in-out infinite;
-}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--primary);text-decoration:none}
+input,select,textarea{font-family:inherit;font-size:14px;width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;background:#fff;color:var(--text);transition:border-color .2s;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px}
+.fg{margin-bottom:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s}
+.btn-primary{background:linear-gradient(180deg,#2563eb 0%,#1a56db 100%);color:#fff;box-shadow:0 8px 0 #0f3fa8}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 0 #0f3fa8}
+.btn-primary:active{transform:translateY(4px);box-shadow:0 4px 0 #0f3fa8}
+.btn-secondary{background:#f3f4f6;color:var(--text);border:1.5px solid var(--border)}
+.btn-secondary:hover{background:#e5e7eb}
+.btn-danger{background:#fef2f2;color:var(--danger);border:1.5px solid #fecaca}
+.btn-success{background:#ecfdf5;color:var(--success);border:1.5px solid #a7f3d0}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-block{width:100%}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,.07);padding:24px}
+.auth-bg{min-height:100vh;background:linear-gradient(145deg,#0d2b5e 0%,#1a56db 100%);display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-card{background:#fff;border-radius:24px;padding:40px 36px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.4),0 8px 20px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.8)}
+.auth-logos{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:24px}
+.auth-logos img{height:48px;object-fit:contain}
+.auth-title{font-size:22px;font-weight:700;color:#0d2b5e;margin-bottom:4px;text-align:center}
+.auth-subtitle{font-size:13px;color:var(--muted);margin-bottom:28px;text-align:center}
+.dots{display:flex;justify-content:center;gap:8px;margin-bottom:20px}
+.dots span{width:10px;height:10px;border-radius:50%;display:inline-block;animation:dotBounce .8s ease-in-out infinite}
 .dots span:nth-child(1){background:#e63946;animation-delay:0s}
 .dots span:nth-child(2){background:#1a56db;animation-delay:.15s}
 .dots span:nth-child(3){background:#f4c430;animation-delay:.3s}
 .dots span:nth-child(4){background:#2dc653;animation-delay:.45s}
-@keyframes dotBounce{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-8px)}
-}
-
-/* ── Spinner wrap ── */
-.spinner-wrap{
-  width:72px;height:72px;
-  background:#e0f6ff;
-  border-radius:20px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  margin:0 auto 24px;
-}
-.spinner{
-  width:32px;height:32px;
-  border:3px solid rgba(0,174,239,.2);
-  border-top-color:#00aeef;
-  border-radius:50%;
-  animation:spin .8s linear infinite;
-}
+@keyframes dotBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.portal{display:flex;min-height:100vh}
+.sidebar{width:240px;flex-shrink:0;background:linear-gradient(180deg,#1e3a8a 0%,#1e429f 100%);box-shadow:4px 0 20px rgba(0,0,0,.15);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform .3s}
+.sb-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
+.sb-brand img{height:36px}
+.sb-brand span{color:#fff;font-weight:700;font-size:14px;line-height:1.2}
+.sb-nav{flex:1;padding:12px 0;overflow-y:auto}
+.nav-sec{padding:8px 20px 4px;font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em}
+.ni{display:flex;align-items:center;gap:10px;padding:10px 20px;color:rgba(255,255,255,.75);font-size:14px;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+.ni:hover{background:rgba(255,255,255,.08);color:#fff}
+.ni.active{background:rgba(0,174,239,.15);color:#fff;border-left-color:#00aeef}
+.topbar{height:60px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);display:flex;align-items:center;padding:0 24px;gap:16px;position:fixed;top:0;left:240px;right:0;z-index:99}
+.tb-title{font-size:16px;font-weight:600;flex:1}
+.tb-user{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+.tb-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#1a56db,#1e429f);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.main{margin-left:240px;margin-top:60px;padding:28px 28px 40px;min-height:calc(100vh - 60px)}
+#tc{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:slideIn .3s ease;max-width:320px}
+.toast.success{background:#065f46}
+.toast.danger{background:#991b1b}
+.toast.warning{background:#92400e}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+#lo{position:fixed;inset:0;background:rgba(255,255,255,.75);display:none;align-items:center;justify-content:center;z-index:9998}
+.spinner{width:40px;height:40px;border:4px solid rgba(26,86,219,.2);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── Text ── */
-h1{
-  font-size:20px;font-weight:700;
-  color:#0d2b5e;
-  margin-bottom:8px;line-height:1.3;
-}
-.subtitle{
-  font-size:14px;color:#64748b;
-  margin-bottom:28px;
-}
-
-/* ── Progress bar multicolour sliding ── */
-.progress-track{
-  width:100%;height:5px;
-  background:#f1f5f9;
-  border-radius:999px;
-  overflow:hidden;
-}
-.progress-bar{
-  height:100%;
-  border-radius:999px;
-  background:linear-gradient(90deg,#e63946,#1a56db,#f4c430,#2dc653,#e63946);
-  background-size:200% 100%;
-  animation:slide 1.8s linear infinite;
-}
-@keyframes slide{
-  0%{background-position:100% 0}
-  100%{background-position:-100% 0}
-}
-
-/* ── Responsive ── */
-@media(max-width:480px){
-  body{padding:16px}
-  .card{padding:32px 24px 32px}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.modal{background:#fff;border-radius:20px;padding:32px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:mIn .25s cubic-bezier(.34,1.56,.64,1)}
+@keyframes mIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:20px}
+.tw{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#f9fafb;padding:10px 14px;text-align:left;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+td{padding:12px 14px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f9fafb}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.bm{background:#fffbeb;color:#b45309}
+.bl{background:#ecfdf5;color:#065f46}
+.bt{background:#fef2f2;color:#991b1b}
+.bb{background:#f3f4f6;color:#6b7280}
+.ba{background:#eff6ff;color:#1d4ed8}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
+.sc{background:#fff;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,.07);padding:20px}
+.si{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:20px}
+.sn{font-size:28px;font-weight:800}
+.sl{font-size:13px;color:var(--muted);margin-top:2px}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.ph h2{font-size:20px;font-weight:700}
+.alert{padding:14px 18px;border-radius:12px;font-size:14px;margin-bottom:16px}
+.ai{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.as{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+.ad{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.aw{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.sb-toggle{display:none;position:fixed;bottom:20px;left:20px;z-index:200;width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;background:var(--primary);color:#fff;font-size:20px;box-shadow:0 4px 16px rgba(26,86,219,.4)}
+.mob-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+.mob-ov.show{display:block}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main,.topbar{margin-left:0;left:0}
+  .sb-toggle{display:flex;align-items:center;justify-content:center}
 }
 </style>
 </head>
 <body>
-
-<div class="card">
-  <img src="icon-192.png" alt="SPDK" class="logo">
-
-  <div class="dots">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-  </div>
-
-  <div class="spinner-wrap">
-    <div class="spinner"></div>
-  </div>
-
-  <h1>Sedang Menghubungkan...</h1>
-  <p class="subtitle">Sila tunggu sebentar</p>
-
-  <div class="progress-track">
-    <div class="progress-bar"></div>
-  </div>
-</div>
-
+<div id="app"></div>
+<div id="tc"></div>
+<div id="lo"><div class="spinner"></div></div>
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+const GAS_URL='https://script.google.com/macros/s/AKfycbzRjduXyfm6jGpKfMv37SK2tANg3_4E_JF6YFG1b8_Fappcs9gnQLNJJJw_mfPdKvsSjw/exec';
+const L={
+  L01:'https://i.ibb.co/QvRWvqmk/1-Jata-KPKM.png',
+  L02:'https://i.ibb.co/XfcvhqxC/2-Logo-DVS.png',
+  L03:'https://i.ibb.co/4wJzqpVr/3-Logo-TVET-Malaysia.png',
+  L04:'https://i.ibb.co/zVLt1VsH/4-Malaysia-Madani.png'
+};
+let S={token:localStorage.getItem('spdk_token')||'',role:localStorage.getItem('spdk_role')||'',nama:localStorage.getItem('spdk_nama')||''};
+function saveAuth(t,r,n){S.token=t;S.role=r;S.nama=n;localStorage.setItem('spdk_token',t);localStorage.setItem('spdk_role',r);localStorage.setItem('spdk_nama',n)}
+function clearAuth(){S={token:'',role:'',nama:''};['spdk_token','spdk_role','spdk_nama'].forEach(k=>localStorage.removeItem(k))}
+async function api(action,params={}){
+  const body={action,...params};
+  if(S.token)body.token=S.token;
+  const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});
+  return res.json();
 }
-setTimeout(function() {
-  window.location.replace("https://script.google.com/macros/s/AKfycbzRjduXyfm6jGpKfMv37SK2tANg3_4E_JF6YFG1b8_Fappcs9gnQLNJJJw_mfPdKvsSjw/exec");
-}, 1500);
+function toast(msg,type='info',ms=3500){
+  const c=document.getElementById('tc'),t=document.createElement('div');
+  t.className='toast '+type;t.textContent=msg;c.appendChild(t);
+  setTimeout(()=>t.remove(),ms);
+}
+function loading(v){document.getElementById('lo').style.display=v?'flex':'none'}
+function setView(h){document.getElementById('app').innerHTML=h}
+function $(id){return document.getElementById(id)}
+function on(id,ev,fn){const el=$(id);if(el)el.addEventListener(ev,fn)}
+function badge(s){
+  const m={menunggu:'bm',lulus:'bl',tolak:'bt',batal:'bb',aktif:'ba'};
+  const lb={menunggu:'Menunggu',lulus:'Lulus',tolak:'Ditolak',batal:'Dibatal',aktif:'Aktif'};
+  return`<span class="badge ${m[s]||'bb'}">${lb[s]||s}</span>`;
+}
+const ROUTES={
+  'login':{r:pgLogin,pub:true},'daftar':{r:pgDaftar,pub:true},
+  'lupa-kata-laluan':{r:pgLupa,pub:true},'reset-password':{r:pgReset,pub:true},
+  'dashboard':{r:pgDashboard},'katalog-kursus':{r:pgKatalog},
+  'pendaftaran-saya':{r:pgPendaftaranSaya},'sijil-saya':{r:pgSijilSaya},
+  'maklum-balas':{r:pgMaklumBalas},'profil-saya':{r:pgProfil},
+  'tukar-kata-laluan':{r:pgTukarKL},
+  'admin':{r:pgAdmin,role:['admin','superadmin']},
+  'admin-kursus':{r:pgAdminKursus,role:['admin','superadmin']},
+  'admin-pendaftaran':{r:pgAdminPend,role:['admin','superadmin']},
+  'kehadiran':{r:pgKehadiran,role:['admin','superadmin']},
+  'laporan':{r:pgLaporan,role:['admin','superadmin']},
+  'surat-tawaran':{r:pgSuratTawaran,role:['admin','superadmin']},
+  'superadmin-pengguna':{r:pgUrusPengguna,role:['superadmin']},
+  'scan-qr':{r:pgScanQR,pub:true},'verify-cert':{r:pgVerifyCert,pub:true}
+};
+function goTo(h){window.location.hash='#'+h}
+function router(){
+  const h=window.location.hash.replace('#','')||'login';
+  const rt=ROUTES[h];
+  if(!rt){goTo('login');return}
+  if(rt.pub){
+    if(S.token&&(h==='login'||h==='daftar')){goTo(S.role==='peserta'?'dashboard':'admin');return}
+    rt.r(h);return;
+  }
+  if(!S.token){goTo('login');return}
+  if(rt.role&&!rt.role.includes(S.role)){toast('Akses ditolak.','danger');goTo(S.role==='peserta'?'dashboard':'admin');return}
+  rt.r(h);
+}
+window.addEventListener('hashchange',router);
+window.addEventListener('load',router);
+function shell(title,active,body){
+  const isA=['admin','superadmin'].includes(S.role);
+  const isSA=S.role==='superadmin';
+  const init=S.nama?S.nama[0].toUpperCase():'?';
+  const pesertaLinks=[
+    ['dashboard','Dashboard'],['katalog-kursus','Katalog Kursus'],
+    ['pendaftaran-saya','Pendaftaran Saya'],['sijil-saya','Sijil Saya'],
+    ['maklum-balas','Maklum Balas']
+  ];
+  const adminLinks=[
+    ['admin','Panel Admin'],['admin-kursus','Urus Kursus'],
+    ['admin-pendaftaran','Urus Pendaftaran'],['kehadiran','Urus Kehadiran'],
+    ['laporan','Laporan']
+  ];
+  const saLinks=[['surat-tawaran','Surat Tawaran'],['superadmin-pengguna','Urus Pengguna']];
+  const links=isA?adminLinks:pesertaLinks;
+  const navHtml=links.map(([k,lb])=>`<div class="ni ${active===k?'active':''}" onclick="goTo('${k}')">${lb}</div>`).join('');
+  const saHtml=isSA?`<div class="nav-sec">Superadmin</div>${saLinks.map(([k,lb])=>`<div class="ni ${active===k?'active':''}" onclick="goTo('${k}')">${lb}</div>`).join('')}`:'';
+  return`
+<button class="sb-toggle" onclick="togSb()">☰</button>
+<div class="mob-ov" id="mob-ov" onclick="togSb()"></div>
+<div class="sidebar" id="sb">
+  <div class="sb-brand"><img src="${L.L02}" alt="DVS"><span>SPDK ITU</span></div>
+  <nav class="sb-nav">
+    <div class="nav-sec">${isA?'Pengurusan':'Portal Saya'}</div>
+    ${navHtml}${saHtml}
+    <div class="nav-sec">Akaun</div>
+    <div class="ni ${active==='profil-saya'?'active':''}" onclick="goTo('profil-saya')">Profil Saya</div>
+    <div class="ni ${active==='tukar-kata-laluan'?'active':''}" onclick="goTo('tukar-kata-laluan')">Tukar Kata Laluan</div>
+    <div class="ni" onclick="doLogout()">Log Keluar</div>
+  </nav>
+</div>
+<div class="topbar">
+  <span class="tb-title">${title}</span>
+  <div class="tb-user"><span>${S.nama}</span><div class="tb-avatar">${init}</div></div>
+</div>
+<div class="main">${body}</div>`;
+}
+function togSb(){const s=$('sb'),o=$('mob-ov');s.classList.toggle('open');o.classList.toggle('show')}
+async function doLogout(){
+  if(!confirm('Log keluar sekarang?'))return;
+  try{await api('logKeluar')}catch(e){}
+  clearAuth();goTo('login');
+}
+/* AUTH */
+function pgLogin(){
+  setView(`<div class="auth-bg"><div class="auth-card">
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"><img src="${L.L03}"><img src="${L.L04}"></div>
+    <div class="auth-title">SPDK ITU</div>
+    <div class="auth-subtitle">Sistem Pendigitalan Data Kursus — Institut Teknologi Unggas</div>
+    <div class="dots"><span></span><span></span><span></span><span></span></div>
+    <div id="la"></div>
+    <div class="fg"><label>E-mel</label><input type="email" id="le" placeholder="emel@dvs.gov.my"></div>
+    <div class="fg"><label>Kata Laluan</label><input type="password" id="lp" placeholder="Kata laluan"></div>
+    <button class="btn btn-primary btn-block" id="bl" onclick="doLogin()">Log Masuk</button>
+    <div style="text-align:center;margin-top:16px;font-size:13px;color:#6b7280">
+      Belum ada akaun? <a href="#daftar">Daftar</a> &nbsp;·&nbsp; <a href="#lupa-kata-laluan">Lupa kata laluan?</a>
+    </div>
+  </div></div>`);
+  on('lp','keydown',e=>{if(e.key==='Enter')doLogin()});
+}
+async function doLogin(){
+  const e=$('le').value.trim(),p=$('lp').value;
+  if(!e||!p){$('la').innerHTML='<div class="alert ad">Sila isi semua medan.</div>';return}
+  $('bl').disabled=true;loading(true);
+  try{
+    const r=await api('login',{email:e,password:p});
+    if(r.success){saveAuth(r.token,r.role,r.nama);toast('Selamat datang, '+r.nama+'!','success');goTo(r.role==='peserta'?'dashboard':'admin')}
+    else $('la').innerHTML=`<div class="alert ad">${r.message||'Log masuk gagal.'}</div>`;
+  }catch(err){$('la').innerHTML='<div class="alert ad">Ralat sambungan. Cuba lagi.</div>'}
+  loading(false);const b=$('bl');if(b)b.disabled=false;
+}
+function pgDaftar(){
+  setView(`<div class="auth-bg"><div class="auth-card" style="max-width:520px">
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"><img src="${L.L03}"><img src="${L.L04}"></div>
+    <div class="auth-title">Daftar Akaun</div>
+    <div class="auth-subtitle">Buat akaun baru SPDK ITU</div>
+    <div id="da"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg"><label>Nama Penuh (MyKad)</label><input id="dn" placeholder="Nama penuh"></div>
+      <div class="fg"><label>No. MyKad</label><input id="dic" placeholder="Tanpa sempang"></div>
+      <div class="fg"><label>E-mel</label><input type="email" id="de" placeholder="emel@dvs.gov.my"></div>
+      <div class="fg"><label>No. Tel</label><input id="dt" placeholder="01x-xxxxxxx"></div>
+      <div class="fg"><label>Jawatan</label><select id="dj"><option value="">-- Pilih --</option>
+        <option>Pembantu Veterinar</option><option>Pembantu Makmal</option>
+        <option>Penolong Pegawai Veterinar</option><option>Penolong Pegawai Sains</option>
+        <option>Pegawai Sains</option><option>Pegawai Veterinar</option>
+        <option>Pegawai Penyelidik</option><option>Pelatih SKM</option>
+      </select></div>
+      <div class="fg"><label>Gred</label><input id="dg" placeholder="cth. W17, F41"></div>
+      <div class="fg"><label>Bahagian/Unit</label><input id="db" placeholder="Bahagian"></div>
+      <div class="fg"><label>Kata Laluan</label><input type="password" id="dp" placeholder="Min. 8 aksara, 1 huruf besar, 1 nombor"></div>
+      <div class="fg"><label>Sahkan Kata Laluan</label><input type="password" id="dp2" placeholder="Ulang kata laluan"></div>
+    </div>
+    <button class="btn btn-primary btn-block" id="bdr" onclick="doDaftar()">Daftar Akaun</button>
+    <div style="text-align:center;margin-top:16px;font-size:13px;color:#6b7280">Sudah ada akaun? <a href="#login">Log Masuk</a></div>
+  </div></div>`);
+}
+async function doDaftar(){
+  const v={namaMyKad:$('dn').value.trim(),noMyKad:$('dic').value.trim(),email:$('de').value.trim(),noTel:$('dt').value.trim(),jawatan:$('dj').value,gred:$('dg').value.trim(),bahagianUnit:$('db').value.trim(),password:$('dp').value};
+  if(Object.values(v).some(x=>!x)){$('da').innerHTML='<div class="alert ad">Sila isi semua medan.</div>';return}
+  if(v.password!==$('dp2').value){$('da').innerHTML='<div class="alert ad">Kata laluan tidak sepadan.</div>';return}
+  $('bdr').disabled=true;loading(true);
+  try{
+    const r=await api('daftarAkaun',v);
+    if(r.success){toast('Akaun berjaya didaftar! Sila log masuk.','success');goTo('login')}
+    else $('da').innerHTML=`<div class="alert ad">${r.message||'Pendaftaran gagal.'}</div>`;
+  }catch(e){$('da').innerHTML='<div class="alert ad">Ralat sambungan.</div>'}
+  loading(false);const b=$('bdr');if(b)b.disabled=false;
+}
+function pgLupa(){
+  setView(`<div class="auth-bg"><div class="auth-card">
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"></div>
+    <div class="auth-title">Lupa Kata Laluan</div>
+    <div class="auth-subtitle">Masukkan e-mel untuk menerima pautan reset</div>
+    <div id="lu-a"></div>
+    <div class="fg"><label>E-mel</label><input type="email" id="lu-e" placeholder="emel@dvs.gov.my"></div>
+    <button class="btn btn-primary btn-block" id="blu" onclick="doLupa()">Hantar Pautan Reset</button>
+    <div style="text-align:center;margin-top:16px;font-size:13px"><a href="#login">← Kembali ke Log Masuk</a></div>
+  </div></div>`);
+}
+async function doLupa(){
+  const e=$('lu-e').value.trim();
+  if(!e){$('lu-a').innerHTML='<div class="alert ad">Sila masukkan e-mel.</div>';return}
+  $('blu').disabled=true;loading(true);
+  try{
+    const r=await api('lupaKataLaluan',{email:e});
+    $('lu-a').innerHTML=r.success?'<div class="alert as">E-mel reset telah dihantar. Semak peti masuk anda.</div>':`<div class="alert ad">${r.message||'Gagal.'}</div>`;
+  }catch(e){$('lu-a').innerHTML='<div class="alert ad">Ralat sambungan.</div>'}
+  loading(false);const b=$('blu');if(b)b.disabled=false;
+}
+function pgReset(){
+  const params=new URLSearchParams(window.location.hash.split('?')[1]||'');
+  const rt=params.get('token')||'';
+  setView(`<div class="auth-bg"><div class="auth-card">
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"></div>
+    <div class="auth-title">Reset Kata Laluan</div>
+    <div class="auth-subtitle">Masukkan kata laluan baru anda</div>
+    <div id="re-a"></div>
+    <div class="fg"><label>Kata Laluan Baru</label><input type="password" id="re-p" placeholder="Min. 8 aksara"></div>
+    <div class="fg"><label>Sahkan</label><input type="password" id="re-p2" placeholder="Ulang kata laluan baru"></div>
+    <button class="btn btn-primary btn-block" id="bre" onclick="doReset('${rt}')">Set Kata Laluan Baru</button>
+  </div></div>`);
+}
+async function doReset(rt){
+  const p=$('re-p').value,p2=$('re-p2').value;
+  if(!p||!p2){$('re-a').innerHTML='<div class="alert ad">Sila isi semua medan.</div>';return}
+  if(p!==p2){$('re-a').innerHTML='<div class="alert ad">Kata laluan tidak sepadan.</div>';return}
+  $('bre').disabled=true;loading(true);
+  try{
+    const r=await api('resetKataLaluan',{resetToken:rt,newPassword:p});
+    if(r.success){toast('Kata laluan berjaya ditukar!','success');goTo('login')}
+    else $('re-a').innerHTML=`<div class="alert ad">${r.message||'Reset gagal.'}</div>`;
+  }catch(e){$('re-a').innerHTML='<div class="alert ad">Ralat sambungan.</div>'}
+  loading(false);const b=$('bre');if(b)b.disabled=false;
+}
+/* PESERTA */
+function pgDashboard(){
+  setView(shell('Dashboard','dashboard','<div id="dc"><div class="alert ai">Memuatkan...</div></div>'));
+  ['admin','superadmin'].includes(S.role)?loadDashAdmin():loadDashPeserta();
+}
+async function loadDashPeserta(){
+  try{
+    const r=await api('getDashboardPeserta');
+    if(!r.success){toast(r.message||'Ralat.','danger');return}
+    const d=r.data||{};
+    $('dc').innerHTML=`
+    <div class="sg">
+      <div class="sc"><div class="si" style="background:#eff6ff">📚</div><div class="sn">${d.jumlahDaftar||0}</div><div class="sl">Pendaftaran</div></div>
+      <div class="sc"><div class="si" style="background:#ecfdf5">✅</div><div class="sn">${d.jumlahLulus||0}</div><div class="sl">Lulus</div></div>
+      <div class="sc"><div class="si" style="background:#fefce8">🎓</div><div class="sn">${d.jumlahSijil||0}</div><div class="sl">Sijil</div></div>
+      <div class="sc"><div class="si" style="background:#fdf4ff">⭐</div><div class="sn">${d.jumlahMaklumBalas||0}</div><div class="sl">Maklum Balas</div></div>
+    </div>
+    <div class="card"><h3 style="margin-bottom:16px;font-size:16px">Kursus Terkini</h3>
+    ${(d.kursusTerkini||[]).length?`<div class="tw"><table><thead><tr><th>Kursus</th><th>Tarikh</th><th>Status</th></tr></thead><tbody>
+      ${d.kursusTerkini.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikh||'-'}</td><td>${badge(k.status)}</td></tr>`).join('')}
+    </tbody></table></div>`:'<p style="color:#6b7280;font-size:14px">Tiada pendaftaran kursus lagi.</p>'}
+    </div>`;
+  }catch(e){toast('Ralat memuatkan dashboard.','danger')}
+}
+async function loadDashAdmin(){
+  try{
+    const r=await api('getDashboardAdmin');
+    if(!r.success){toast(r.message||'Ralat.','danger');return}
+    const d=r.data||{};
+    $('dc').innerHTML=`
+    <div class="sg">
+      <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.jumlahPengguna||0}</div><div class="sl">Pengguna</div></div>
+      <div class="sc"><div class="si" style="background:#ecfdf5">📚</div><div class="sn">${d.jumlahKursus||0}</div><div class="sl">Kursus Aktif</div></div>
+      <div class="sc"><div class="si" style="background:#fefce8">⏳</div><div class="sn">${d.jumlahMenunggu||0}</div><div class="sl">Menunggu Lulus</div></div>
+      <div class="sc"><div class="si" style="background:#fdf4ff">🎓</div><div class="sn">${d.jumlahSijil||0}</div><div class="sl">Sijil</div></div>
+    </div>
+    <div class="card"><h3 style="margin-bottom:4px">Selamat datang, ${S.nama}</h3><p style="color:#6b7280;font-size:14px">Panel pengurusan SPDK ITU</p></div>`;
+  }catch(e){toast('Ralat memuatkan dashboard.','danger')}
+}
+function pgKatalog(){
+  setView(shell('Katalog Kursus','katalog-kursus',`<div class="ph"><h2>Katalog Kursus</h2></div><div id="kc"><div class="alert ai">Memuatkan kursus...</div></div>`));
+  (async()=>{
+    try{
+      const r=await api('getSenaraiKursusAktif');
+      if(!r.success){$('kc').innerHTML=`<div class="alert ad">${r.message}</div>`;return}
+      const ks=r.data||[];
+      $('kc').innerHTML=ks.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+        ${ks.map(k=>`<div class="card"><div style="font-weight:700;font-size:16px;margin-bottom:8px">${k.namaKursus}</div>
+        <div style="font-size:13px;color:#6b7280;margin-bottom:12px">${k.tarikhMula||''} – ${k.tarikhTamat||''}</div>
+        <div style="font-size:13px;margin-bottom:16px">${k.penerangan||''}</div>
+        <button class="btn btn-primary btn-sm" onclick="daftarKursus('${k.idKursus}','${k.namaKursus.replace(/'/g,'')}')">Daftar Sekarang</button></div>`).join('')}
+      </div>`:'<div class="alert ai">Tiada kursus aktif pada masa ini.</div>';
+    }catch(e){$('kc').innerHTML='<div class="alert ad">Ralat memuatkan katalog.</div>'}
+  })();
+}
+async function daftarKursus(id,nama){
+  if(!confirm(`Daftar kursus "${nama}"?`))return;
+  loading(true);
+  try{const r=await api('daftarKursus',{idKursus:id});toast(r.success?'Pendaftaran berjaya! Status: Menunggu kelulusan.':(r.message||'Gagal mendaftar.'),r.success?'success':'danger')}
+  catch(e){toast('Ralat sambungan.','danger')}
+  loading(false);
+}
+function pgPendaftaranSaya(){
+  setView(shell('Pendaftaran Saya','pendaftaran-saya',`<div class="ph"><h2>Pendaftaran Saya</h2></div><div id="psc"><div class="alert ai">Memuatkan...</div></div>`));
+  (async()=>{
+    try{
+      const r=await api('getSenaraiPendaftaran');
+      const rows=r.data||[];
+      $('psc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th></tr></thead><tbody>
+        ${rows.map(x=>`<tr><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td></tr>`).join('')}
+      </tbody></table></div>`:'<div class="alert ai">Tiada rekod pendaftaran.</div>';
+    }catch(e){$('psc').innerHTML='<div class="alert ad">Ralat.</div>'}
+  })();
+}
+function pgSijilSaya(){
+  setView(shell('Sijil Saya','sijil-saya',`<div class="ph"><h2>Sijil Saya</h2></div><div id="sijc"><div class="alert ai">Memuatkan...</div></div>`));
+  (async()=>{
+    try{
+      const r=await api('getSijilSaya');
+      const s=r.data||[];
+      $('sijc').innerHTML=s.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+        ${s.map(x=>`<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:12px">🎓</div>
+        <div style="font-weight:700;margin-bottom:6px">${x.namaKursus}</div>
+        <div style="font-size:13px;color:#6b7280;margin-bottom:16px">No: ${x.noCert||'-'} | ${x.tarikhIssue||'-'}</div>
+        ${x.urlSijil?`<a href="${x.urlSijil}" target="_blank" class="btn btn-primary btn-sm">Muat Turun</a>`:''}</div>`).join('')}
+      </div>`:'<div class="alert ai">Tiada sijil lagi.</div>';
+    }catch(e){$('sijc').innerHTML='<div class="alert ad">Ralat.</div>'}
+  })();
+}
+function pgMaklumBalas(){
+  const isA=['admin','superadmin'].includes(S.role);
+  setView(shell('Maklum Balas','maklum-balas',`<div class="ph"><h2>Maklum Balas</h2></div><div id="mbc"><div class="alert ai">Memuatkan...</div></div>`));
+  isA?loadMBAdmin():loadMBPeserta();
+}
+async function loadMBPeserta(){
+  try{
+    const r=await api('getSoalanMaklumBalas');
+    const s=r.soalan||[];
+    if(!s.length){$('mbc').innerHTML='<div class="alert ai">Tiada soalan maklum balas pada masa ini.</div>';return}
+    $('mbc').innerHTML=`<div class="card" style="max-width:600px">
+      <h3 style="margin-bottom:20px">Borang Maklum Balas Kursus</h3>
+      ${s.map((q,i)=>`<div class="fg"><label>${i+1}. ${q.soalan}</label>
+        <select id="mbs-${q.idSoalan}"><option value="">-- Pilih --</option>
+          ${[1,2,3,4,5].map(n=>`<option value="${n}">${n} — ${['Sangat Tidak Setuju','Tidak Setuju','Neutral','Setuju','Sangat Setuju'][n-1]}</option>`).join('')}
+        </select></div>`).join('')}
+      <div class="fg"><label>Komen Tambahan</label><textarea id="mb-kom" rows="3" placeholder="Komen anda (pilihan)"></textarea></div>
+      <button class="btn btn-primary" onclick="submitMB(${JSON.stringify(s.map(q=>q.idSoalan))})">Hantar Maklum Balas</button>
+    </div>`;
+  }catch(e){$('mbc').innerHTML='<div class="alert ad">Ralat.</div>'}
+}
+async function submitMB(ids){
+  const j={};
+  for(const id of ids){const v=$('mbs-'+id)?.value;if(!v){toast('Sila jawab semua soalan.','warning');return}j[id]=parseInt(v)}
+  loading(true);
+  try{
+    const r=await api('submitMaklumBalas',{jawapan:j,komen:$('mb-kom')?.value||''});
+    toast(r.success?'Maklum balas berjaya dihantar!':(r.message||'Gagal.'),'success');
+    if(r.success)$('mbc').innerHTML='<div class="alert as">Terima kasih! Maklum balas anda telah direkodkan.</div>';
+  }catch(e){toast('Ralat sambungan.','danger')}
+  loading(false);
+}
+async function loadMBAdmin(){
+  try{
+    const r=await api('getSenaraiMaklumBalas');
+    const rows=r.data||[];
+    $('mbc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh</th><th>Purata</th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.namaKursus}</td><td>${x.tarikh||'-'}</td><td>${x.purata||'-'}</td></tr>`).join('')}
+    </tbody></table></div>`:'<div class="alert ai">Tiada maklum balas lagi.</div>';
+  }catch(e){$('mbc').innerHTML='<div class="alert ad">Ralat.</div>'}
+}
+function pgProfil(){
+  setView(shell('Profil Saya','profil-saya',`<div class="ph"><h2>Profil Saya</h2></div><div id="profc"><div class="alert ai">Memuatkan profil...</div></div>`));
+  (async()=>{
+    try{
+      const r=await api('getProfil');
+      const p=r.profil||{};
+      $('profc').innerHTML=`<div class="card" style="max-width:560px">
+        <div id="pa"></div>
+        <div class="fg"><label>Nama Penuh</label><input id="pn" value="${p.nama||''}"></div>
+        <div class="fg"><label>E-mel</label><input type="email" id="pe" value="${p.email||''}" disabled style="opacity:.6"></div>
+        <div class="fg"><label>No. Tel</label><input id="pt" value="${p.noTel||''}"></div>
+        <div class="fg"><label>Jawatan</label><input id="pj" value="${p.jawatan||''}"></div>
+        <div class="fg"><label>Gred</label><input id="pg" value="${p.gred||''}"></div>
+        <div class="fg"><label>Bahagian/Unit</label><input id="pba" value="${p.bahagianUnit||''}"></div>
+        <button class="btn btn-primary" onclick="saveProfil()">Simpan Perubahan</button>
+      </div>`;
+    }catch(e){$('profc').innerHTML='<div class="alert ad">Ralat.</div>'}
+  })();
+}
+async function saveProfil(){
+  loading(true);
+  try{
+    const r=await api('kemaskiniprofil',{nama:$('pn').value,noTel:$('pt').value,jawatan:$('pj').value,gred:$('pg').value,bahagianUnit:$('pba').value});
+    $('pa').innerHTML=r.success?'<div class="alert as">Profil berjaya dikemaskini.</div>':`<div class="alert ad">${r.message||'Gagal.'}</div>`;
+    if(r.success&&r.nama){S.nama=r.nama;localStorage.setItem('spdk_nama',r.nama)}
+  }catch(e){$('pa').innerHTML='<div class="alert ad">Ralat sambungan.</div>'}
+  loading(false);
+}
+function pgTukarKL(){
+  setView(shell('Tukar Kata Laluan','tukar-kata-laluan',`
+    <div class="ph"><h2>Tukar Kata Laluan</h2></div>
+    <div class="card" style="max-width:480px">
+      <div id="tkla"></div>
+      <div class="fg"><label>Kata Laluan Semasa</label><input type="password" id="tkl1" placeholder="Kata laluan semasa"></div>
+      <div class="fg"><label>Kata Laluan Baru</label><input type="password" id="tkl2" placeholder="Min. 8 aksara"></div>
+      <div class="fg"><label>Sahkan Kata Laluan Baru</label><input type="password" id="tkl3" placeholder="Ulang kata laluan baru"></div>
+      <button class="btn btn-primary" onclick="doTukarKL()">Tukar Kata Laluan</button>
+    </div>`));
+}
+async function doTukarKL(){
+  const a=$('tkl1').value,b=$('tkl2').value,c=$('tkl3').value;
+  if(!a||!b||!c){$('tkla').innerHTML='<div class="alert ad">Sila isi semua medan.</div>';return}
+  if(b!==c){$('tkla').innerHTML='<div class="alert ad">Kata laluan baru tidak sepadan.</div>';return}
+  loading(true);
+  try{
+    const r=await api('tukarKataLaluan',{currentPassword:a,newPassword:b,confirmPassword:c});
+    if(r.success){$('tkla').innerHTML='<div class="alert as">Kata laluan berjaya ditukar.</div>';$('tkl1').value='';$('tkl2').value='';$('tkl3').value=''}
+    else $('tkla').innerHTML=`<div class="alert ad">${r.message||'Gagal.'}</div>`;
+  }catch(e){$('tkla').innerHTML='<div class="alert ad">Ralat sambungan.</div>'}
+  loading(false);
+}
+/* ADMIN */
+function pgAdmin(){
+  setView(shell('Panel Admin','admin','<div id="dc"><div class="alert ai">Memuatkan...</div></div>'));
+  loadDashAdmin();
+}
+function pgAdminKursus(){
+  setView(shell('Urus Kursus','admin-kursus',`
+    <div class="ph"><h2>Urus Kursus</h2><button class="btn btn-primary btn-sm" onclick="modalKursus()">+ Tambah Kursus</button></div>
+    <div id="kuc"><div class="alert ai">Memuatkan...</div></div>`));
+  loadKursus();
+}
+async function loadKursus(){
+  try{
+    const r=await api('getSenaraiKursus');
+    const rows=r.data||[];
+    $('kuc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama Kursus</th><th>Tarikh Mula</th><th>Tarikh Tamat</th><th>Status</th><th></th></tr></thead><tbody>
+      ${rows.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikhMula||'-'}</td><td>${k.tarikhTamat||'-'}</td><td>${badge(k.status||'aktif')}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.idKursus}','${k.namaKursus.replace(/'/g,'')}')">Batal</button></td></tr>`).join('')}
+    </tbody></table></div>`:'<div class="alert ai">Tiada kursus.</div>';
+  }catch(e){$('kuc').innerHTML='<div class="alert ad">Ralat.</div>'}
+}
+async function batalKursusAdmin(id,nama){
+  if(!confirm(`Batalkan kursus "${nama}"?`))return;
+  loading(true);
+  try{const r=await api('batalKursus',{idKursus:id});toast(r.success?'Kursus dibatalkan.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadKursus()}
+  catch(e){toast('Ralat.','danger')}
+  loading(false);
+}
+function modalKursus(){
+  const m=document.createElement('div');m.className='modal-ov';m.id='mk';
+  m.innerHTML=`<div class="modal">
+    <div class="modal-title">Tambah Kursus Baru</div>
+    <div id="mka"></div>
+    <div class="fg"><label>Nama Kursus</label><input id="mkn" placeholder="Nama kursus"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg"><label>Tarikh Mula</label><input type="date" id="mkm"></div>
+      <div class="fg"><label>Tarikh Tamat</label><input type="date" id="mkt"></div>
+    </div>
+    <div class="fg"><label>Kapasiti</label><input type="number" id="mkk" placeholder="cth. 30"></div>
+    <div class="fg"><label>Penerangan</label><textarea id="mkp" rows="2"></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="document.getElementById('mk').remove()">Batal</button>
+      <button class="btn btn-primary" onclick="saveKursus()">Simpan</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+async function saveKursus(){
+  loading(true);
+  try{
+    const r=await api('ciptaKursus',{namaKursus:$('mkn').value,tarikhMula:$('mkm').value,tarikhTamat:$('mkt').value,kapasiti:$('mkk').value,penerangan:$('mkp').value});
+    if(r.success){toast('Kursus berjaya ditambah.','success');document.getElementById('mk').remove();loadKursus()}
+    else $('mka').innerHTML=`<div class="alert ad">${r.message||'Gagal.'}</div>`;
+  }catch(e){toast('Ralat sambungan.','danger')}
+  loading(false);
+}
+function pgAdminPend(){
+  setView(shell('Urus Pendaftaran','admin-pendaftaran',`<div class="ph"><h2>Urus Pendaftaran</h2></div><div id="apc"><div class="alert ai">Memuatkan...</div></div>`));
+  loadPend();
+}
+async function loadPend(){
+  try{
+    const r=await api('getSenaraiPendaftaran',{semua:true});
+    const rows=r.data||[];
+    $('apc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><td>${x.nama||x.namaUser||'-'}</td><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td>
+      <td style="display:flex;gap:6px">${x.status==='menunggu'?`<button class="btn btn-success btn-sm" onclick="lulusPend('${x.idPendaftaran}')">Lulus</button><button class="btn btn-danger btn-sm" onclick="tolakPend('${x.idPendaftaran}')">Tolak</button>`:'-'}</td></tr>`).join('')}
+    </tbody></table></div>`:'<div class="alert ai">Tiada pendaftaran.</div>';
+  }catch(e){$('apc').innerHTML='<div class="alert ad">Ralat.</div>'}
+}
+async function lulusPend(id){loading(true);try{const r=await api('lulusPendaftaran',{idPendaftaran:id,regId:id});toast(r.success?'Pendaftaran diluluskan.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPend()}catch(e){toast('Ralat.','danger')}loading(false)}
+async function tolakPend(id){
+  const sebab=prompt('Sila masukkan sebab penolakan:');
+  if(sebab===null)return;
+  if(!sebab.trim()){toast('Sebab penolakan wajib diisi.','warning');return}
+  loading(true);
+  try{const r=await api('tolakPendaftaran',{idPendaftaran:id,regId:id,sebabTolak:sebab});toast(r.success?'Pendaftaran ditolak.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPend()}
+  catch(e){toast('Ralat.','danger')}loading(false);
+}
+function pgKehadiran(){
+  setView(shell('Urus Kehadiran','kehadiran',`
+    <div class="ph"><h2>Urus Kehadiran</h2></div>
+    <div class="card">
+      <div class="fg"><label>Pilih Kursus</label><select id="kh-sel" onchange="loadKH(this.value)"><option value="">-- Pilih Kursus --</option></select></div>
+      <div id="khc"></div>
+    </div>`));
+  (async()=>{try{const r=await api('getSenaraiKursus');(r.data||[]).forEach(k=>{const o=document.createElement('option');o.value=k.idKursus;o.textContent=k.namaKursus;$('kh-sel').appendChild(o)})}catch(e){}})();
+}
+async function loadKH(id){
+  if(!id)return;
+  $('khc').innerHTML='<div class="alert ai">Memuatkan...</div>';
+  try{
+    const r=await api('getSenaraiKehadiran',{idKursus:id});
+    const rows=r.data||[];
+    $('khc').innerHTML=rows.length?`<div style="margin-top:16px" class="tw"><table><thead><tr><th>Peserta</th><th>Hari</th><th>Status</th><th></th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><td>${x.nama||'-'}</td><td>${x.hari||'-'}</td><td>${badge(x.status||'menunggu')}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="rekodHadir('${x.attendId||x.regId}','${id}')">Rekod Hadir</button></td></tr>`).join('')}
+    </tbody></table></div>`:'<div style="margin-top:16px" class="alert ai">Tiada rekod kehadiran untuk kursus ini.</div>';
+  }catch(e){$('khc').innerHTML='<div class="alert ad">Ralat.</div>'}
+}
+async function rekodHadir(attendId,idK){
+  loading(true);
+  try{const r=await api('rekodKehadiran',{attendId,idKursus:idK,status:'hadir'});toast(r.success?'Kehadiran direkod.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadKH(idK)}
+  catch(e){toast('Ralat.','danger')}
+  loading(false);
+}
+function pgLaporan(){
+  setView(shell('Laporan','laporan',`<div class="ph"><h2>Laporan & Statistik</h2></div><div id="lapc"><div class="alert ai">Memuatkan laporan...</div></div>`));
+  (async()=>{
+    try{
+      const r=await api('getLaporan');
+      const d=r.data||{};
+      $('lapc').innerHTML=`
+      <div class="sg">
+        <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.jumlahPengguna||0}</div><div class="sl">Jumlah Pengguna</div></div>
+        <div class="sc"><div class="si" style="background:#ecfdf5">📚</div><div class="sn">${d.jumlahKursus||0}</div><div class="sl">Jumlah Kursus</div></div>
+        <div class="sc"><div class="si" style="background:#fefce8">✅</div><div class="sn">${d.jumlahLulus||0}</div><div class="sl">Pendaftaran Lulus</div></div>
+        <div class="sc"><div class="si" style="background:#fdf4ff">🎓</div><div class="sn">${d.jumlahSijil||0}</div><div class="sl">Sijil Dikeluarkan</div></div>
+      </div>
+      <div class="card"><p style="color:#6b7280;font-size:14px">Export PDF akan tersedia dalam versi akan datang.</p></div>`;
+    }catch(e){$('lapc').innerHTML='<div class="alert ad">Ralat.</div>'}
+  })();
+}
+function pgSuratTawaran(){
+  setView(shell('Surat Tawaran','surat-tawaran',`<div class="ph"><h2>Surat Tawaran</h2></div><div id="stc"><div class="alert ai">Memuatkan...</div></div>`));
+  (async()=>{
+    try{
+      const r=await api('getSenaraiTawaran');
+      const rows=r.data||[];
+      $('stc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh Hantar</th><th>Status</th><th></th></tr></thead><tbody>
+        ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.namaKursus}</td><td>${x.tarikhHantar||'-'}</td><td>${badge(x.statusTawaran||'menunggu')}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="hantarTawaran('${x.idPendaftaran}')">Hantar Surat</button></td></tr>`).join('')}
+      </tbody></table></div>`:'<div class="alert ai">Tiada surat tawaran.</div>';
+    }catch(e){$('stc').innerHTML='<div class="alert ad">Ralat.</div>'}
+  })();
+}
+async function hantarTawaran(id){
+  if(!confirm('Hantar surat tawaran kepada peserta ini?'))return;
+  loading(true);
+  try{const r=await api('hantarSuratTawaran',{idPendaftaran:id,regId:id});toast(r.success?'Surat tawaran berjaya dihantar.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)pgSuratTawaran()}
+  catch(e){toast('Ralat.','danger')}
+  loading(false);
+}
+/* SUPERADMIN */
+function pgUrusPengguna(){
+  setView(shell('Urus Pengguna','superadmin-pengguna',`
+    <div class="ph"><h2>Urus Pengguna</h2></div>
+    <div class="card" style="margin-bottom:16px">
+      <select id="fj" onchange="loadPengguna()" style="max-width:200px">
+        <option value="">Semua Jawatan</option>
+        <option>Pembantu Veterinar</option><option>Pembantu Makmal</option>
+        <option>Penolong Pegawai Veterinar</option><option>Penolong Pegawai Sains</option>
+        <option>Pegawai Sains</option><option>Pegawai Veterinar</option>
+        <option>Pegawai Penyelidik</option><option>Pelatih SKM</option>
+      </select>
+    </div>
+    <div id="pgc"><div class="alert ai">Memuatkan...</div></div>`));
+  loadPengguna();
+}
+async function loadPengguna(){
+  const j=$('fj')?.value||'';
+  $('pgc').innerHTML='<div class="alert ai">Memuatkan...</div>';
+  try{
+    const r=await api('getSenaraiPengguna',{jawatan:j});
+    const rows=r.pengguna||r.data||[];
+    $('pgc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama</th><th>E-mel</th><th>Jawatan</th><th>Gred</th><th>Role</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.email||x.emel||'-'}</td><td>${x.jawatan||'-'}</td><td>${x.gred||'-'}</td><td>${x.role}</td>
+      <td>${badge(x.status==='aktif'?'aktif':'batal')}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
+        ${x.status==='aktif'?`<button class="btn btn-danger btn-sm" onclick="nyahaktifUser('${x.userId}')">Nyahaktif</button>`:`<button class="btn btn-success btn-sm" onclick="aktifkanUser('${x.userId}')">Aktifkan</button>`}
+        <button class="btn btn-secondary btn-sm" onclick="resetPWUser('${x.userId}','${x.nama.replace(/'/g,'')}')">Reset PW</button>
+      </td></tr>`).join('')}
+    </tbody></table></div>`:'<div class="alert ai">Tiada pengguna.</div>';
+  }catch(e){$('pgc').innerHTML='<div class="alert ad">Ralat.</div>'}
+}
+async function nyahaktifUser(id){if(!confirm('Nyahaktifkan pengguna ini?'))return;loading(true);try{const r=await api('nyahaktifPengguna',{userId:id});toast(r.success?'Pengguna dinyahaktifkan.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPengguna()}catch(e){toast('Ralat.','danger')}loading(false)}
+async function aktifkanUser(id){loading(true);try{const r=await api('aktifkanPengguna',{userId:id});toast(r.success?'Pengguna diaktifkan.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPengguna()}catch(e){toast('Ralat.','danger')}loading(false)}
+async function resetPWUser(id,nama){
+  if(!confirm(`Reset kata laluan untuk ${nama}?`))return;
+  loading(true);
+  try{const r=await api('resetKataLaluanAdmin',{userId:id});toast(r.success?'Kata laluan direset. E-mel dihantar.':(r.message||'Gagal.'),r.success?'success':'danger')}
+  catch(e){toast('Ralat.','danger')}
+  loading(false);
+}
+/* AWAM */
+function pgScanQR(){
+  const params=new URLSearchParams(window.location.hash.split('?')[1]||'');
+  const courseId=params.get('courseId')||'';
+  const hari=params.get('hari')||'';
+  const tarikh=params.get('tarikh')||'';
+  setView(`<div class="auth-bg"><div class="auth-card">
+    <div class="auth-logos"><img src="${L.L02}"></div>
+    <div class="auth-title">Imbas QR Kehadiran</div>
+    <div class="auth-subtitle">${tarikh?'Hari '+hari+' — '+tarikh:'Masukkan kod QR yang diimbas'}</div>
+    <div id="qra"></div>
+    <div class="fg"><label>Kod QR / Token</label><input id="qrk" value="${courseId&&hari?courseId+'|'+hari+'|'+tarikh:''}" placeholder="Kod QR"></div>
+    <button class="btn btn-primary btn-block" onclick="doScanQR()">Rekod Kehadiran</button>
+  </div></div>`);
+  if(courseId&&hari&&S.token)setTimeout(doScanQR,500);
+}
+async function doScanQR(){
+  const k=$('qrk').value.trim();
+  if(!k){$('qra').innerHTML='<div class="alert ad">Sila masukkan kod QR.</div>';return}
+  if(!S.token){toast('Sila log masuk dahulu.','warning');goTo('login');return}
+  loading(true);
+  try{
+    const r=await api('scanQR',{qrToken:k});
+    $('qra').innerHTML=r.success?`<div class="alert as">✅ Kehadiran berjaya direkod untuk <strong>${r.nama||''}</strong>.</div>`:`<div class="alert ad">${r.message||'Kod QR tidak sah.'}</div>`;
+  }catch(e){$('qra').innerHTML='<div class="alert ad">Ralat sambungan.</div>'}
+  loading(false);
+}
+function pgVerifyCert(){
+  const params=new URLSearchParams(window.location.hash.split('?')[1]||'');
+  const certId=params.get('certId')||'';
+  setView(`<div class="auth-bg"><div class="auth-card">
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"><img src="${L.L03}"></div>
+    <div class="auth-title">Pengesahan Sijil</div>
+    <div class="auth-subtitle">Masukkan nombor sijil untuk mengesahkan kesahihannya</div>
+    <div id="certa"></div>
+    <div class="fg"><label>Nombor Sijil</label><input id="certn" value="${certId}" placeholder="cth. CERT-01012026-1234"></div>
+    <button class="btn btn-primary btn-block" onclick="doVerify()">Sahkan Sijil</button>
+    <div id="certr"></div>
+  </div></div>`);
+  if(certId)setTimeout(doVerify,300);
+}
+async function doVerify(){
+  const n=$('certn').value.trim();
+  if(!n){$('certa').innerHTML='<div class="alert ad">Sila masukkan nombor sijil.</div>';return}
+  loading(true);
+  try{
+    const r=await api('verifyCert',{certId:n});
+    $('certr').innerHTML=r.success&&r.data
+      ?`<div style="margin-top:20px" class="alert as"><strong>✅ Sijil Sah</strong><br>Nama: ${r.data.nama}<br>Kursus: ${r.data.namaKursus}<br>Tarikh: ${r.data.tarikhIssue}</div>`
+      :`<div style="margin-top:20px" class="alert ad">❌ ${r.message||'Sijil tidak dijumpai atau tidak sah.'}</div>`;
+  }catch(e){$('certr').innerHTML='<div style="margin-top:20px" class="alert ad">Ralat sambungan.</div>'}
+  loading(false);
+}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 </script>
 </body>
 </html>
