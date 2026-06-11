@@ -342,14 +342,14 @@ async function loadDashPeserta(){
     const d=r||{};
     $('dc').innerHTML=`
     <div class="sg">
-      <div class="sc"><div class="si" style="background:#eff6ff">📚</div><div class="sn">${d.jumlahDaftar||0}</div><div class="sl">Pendaftaran</div></div>
+      <div class="sc"><div class="si" style="background:#eff6ff">📚</div><div class="sn">${d.statDaftar||0}</div><div class="sl">Pendaftaran</div></div>
       <div class="sc"><div class="si" style="background:#ecfdf5">✅</div><div class="sn">${d.statPeserta&&d.statPeserta.jumlahDaftar||0}</div><div class="sl">Lulus</div></div>
       <div class="sc"><div class="si" style="background:#fefce8">🎓</div><div class="sn">${d.statSijil&&d.statSijil.jumlah||0}</div><div class="sl">Sijil</div></div>
-      <div class="sc"><div class="si" style="background:#fdf4ff">⭐</div><div class="sn">${d.jumlahMaklumBalas||0}</div><div class="sl">Maklum Balas</div></div>
+      <div class="sc"><div class="si" style="background:#fdf4ff">⭐</div><div class="sn">${d.statMaklumBalas||0}</div><div class="sl">Maklum Balas</div></div>
     </div>
     <div class="card"><h3 style="margin-bottom:16px;font-size:16px">Kursus Terkini</h3>
-    ${(d.kursusTerkini||[]).length?`<div class="tw"><table><thead><tr><th>Kursus</th><th>Tarikh</th><th>Status</th></tr></thead><tbody>
-      ${d.kursusTerkini.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikh||'-'}</td><td>${badge(k.status)}</td></tr>`).join('')}
+    ${(d.pendaftaran||[]).length?`<div class="tw"><table><thead><tr><th>Kursus</th><th>Tarikh</th><th>Status</th></tr></thead><tbody>
+      ${d.kursusTerkini.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikhKursus||'-'}</td><td>${badge(k.status)}</td></tr>`).join('')}
     </tbody></table></div>`:'<p style="color:#6b7280;font-size:14px">Tiada pendaftaran kursus lagi.</p>'}
     </div>`;
   }catch(e){toast('Ralat memuatkan dashboard.','danger')}
