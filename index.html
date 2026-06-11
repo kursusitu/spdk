@@ -396,7 +396,7 @@ function pgPendaftaranSaya(){
   setView(shell('Pendaftaran Saya','pendaftaran-saya',`<div class="ph"><h2>Pendaftaran Saya</h2></div><div id="psc"><div class="alert ai">Memuatkan...</div></div>`));
   (async()=>{
     try{
-      const r=await api('getSenaraiPendaftaran');
+      const r=await api('getPendaftaranSaya');
       const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
       $('psc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th></tr></thead><tbody>
         ${rows.map(x=>`<tr><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td></tr>`).join('')}
