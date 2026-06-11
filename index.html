@@ -426,19 +426,77 @@ function pgMaklumBalas(){
 }
 async function loadMBPeserta(){
   try{
-    const r=await api('getSoalanMaklumBalas');
-    const s=r.soalan||[];
-    if(!s.length){$('mbc').innerHTML='<div class="alert ai">Tiada soalan maklum balas pada masa ini.</div>';return}
+    const r=await api('getSenaraiMaklumBalas');
+    if(!r.success){$('mbc').innerHTML=`<div class="alert ad">${r.message||'Ralat memuatkan data.'}</div>`;return}
+    const ks=r.kursus||[];
+    if(!ks.length){$('mbc').innerHTML='<div class="alert ai">Tiada kursus layak pada masa ini. Anda perlu mempunyai pendaftaran yang telah diluluskan untuk mengisi maklum balas.</div>';return}
     $('mbc').innerHTML=`<div class="card" style="max-width:600px">
-      <h3 style="margin-bottom:20px">Borang Maklum Balas Kursus</h3>
-      ${s.map((q,i)=>`<div class="fg"><label>${i+1}. ${q.soalan}</label>
-        <select id="mbs-${q.idSoalan}"><option value="">-- Pilih --</option>
-          ${[1,2,3,4,5].map(n=>`<option value="${n}">${n} — ${['Sangat Tidak Setuju','Tidak Setuju','Neutral','Setuju','Sangat Setuju'][n-1]}</option>`).join('')}
-        </select></div>`).join('')}
-      <div class="fg"><label>Komen Tambahan</label><textarea id="mb-kom" rows="3" placeholder="Komen anda (pilihan)"></textarea></div>
-      <button class="btn btn-primary" onclick="submitMB(${JSON.stringify(s.map(q=>q.idSoalan))})">Hantar Maklum Balas</button>
+      <div class="fg"><label>Pilih Kursus untuk Dinilai</label>
+        <select id="mb-ksel" onchange="loadMBSoalan(this.value)">
+          <option value="">-- Pilih kursus --</option>
+          ${ks.map(k=>`<option value="${k.courseId}||${k.regId}||${k.cukupHadir?1:0}||${k.sudahHantar?1:0}||${k.hariHadir||0}||${k.jumlahHari||1}">${k.namaKursus}</option>`).join('')}
+        </select>
+      </div>
+      <div id="mb-form"></div>
     </div>`;
-  }catch(e){$('mbc').innerHTML='<div class="alert ad">Ralat.</div>'}
+  }catch(e){$('mbc').innerHTML='<div class="alert ad">Ralat sistem.</div>'}
+}
+async function loadMBSoalan(val){
+  if(!val)return;
+  const parts=val.split('||');
+  const courseId=parts[0],regId=parts[1],cukup=parts[2],hantar=parts[3],hadir=parts[4],jumlah=parts[5];
+  const el=$('mb-form');
+  if(hantar==='1'){el.innerHTML='<div class="alert as" style="margin-top:16px">✅ Anda telah mengisi borang penilaian untuk kursus ini. Terima kasih!</div>';return}
+  if(cukup==='0'){el.innerHTML=`<div class="alert aw" style="margin-top:16px">⚠️ Anda perlu hadir semua sesi untuk mengisi borang penilaian. Kehadiran anda: <strong>${hadir}/${jumlah} hari</strong>.</div>`;return}
+  el.innerHTML='<div class="alert ai" style="margin-top:12px">Memuatkan soalan...</div>';
+  try{
+    const r=await api('getSoalanMaklumBalas',{courseId});
+    if(!r.success){el.innerHTML=`<div class="alert ad" style="margin-top:12px">${r.message||'Ralat memuatkan soalan.'}</div>`;return}
+    const s=r.soalan||[];
+    if(!s.length){el.innerHTML='<div class="alert ai" style="margin-top:12px">Tiada soalan penilaian untuk kursus ini pada masa ini.</div>';return}
+    window._mbState={courseId,regId,soalan:s};
+    el.innerHTML=`<div style="margin-top:16px">
+      ${s.map((q,i)=>`<div class="fg" style="margin-bottom:20px">
+        <label style="margin-bottom:8px">${i+1}. ${q.soalan}</label>
+        ${q.jenisSoalan==='teks'
+          ?`<textarea id="mbf-${q.questionId}" rows="3" placeholder="Tulis jawapan anda..." style="margin-top:4px"></textarea>`
+          :`<div style="display:flex;gap:6px;margin-top:8px" id="mbstar-${q.questionId}">
+            ${[1,2,3,4,5].map(n=>`<span style="font-size:32px;cursor:pointer;opacity:.25;transition:all .1s" data-v="${n}" onclick="mbStar('${q.questionId}',${n})">★</span>`).join('')}
+            <input type="hidden" id="mbr-${q.questionId}" value="">
+          </div>`}
+      </div>`).join('')}
+      <button class="btn btn-primary" style="margin-top:8px;width:100%" onclick="submitMBKursus()">
+        Hantar Maklum Balas
+      </button>
+    </div>`;
+  }catch(e){el.innerHTML='<div class="alert ad" style="margin-top:12px">Ralat sistem.</div>'}
+}
+function mbStar(id,val){
+  document.querySelectorAll(`#mbstar-${id} span`).forEach(s=>s.style.opacity=parseInt(s.dataset.v)<=val?'1':'.25');
+  $('mbr-'+id).value=val;
+}
+async function submitMBKursus(){
+  const st=window._mbState||{};
+  if(!st.courseId){toast('Sila pilih kursus dahulu.','warning');return}
+  const jawapan=[];
+  for(const q of st.soalan){
+    if(q.jenisSoalan==='teks'){
+      const v=($('mbf-'+q.questionId)||{}).value||'';
+      if(!v.trim()){toast('Sila isi semua soalan teks.','warning');return}
+      jawapan.push({questionId:q.questionId,rating:0,jawapan:v.trim()});
+    }else{
+      const v=($('mbr-'+q.questionId)||{}).value||'';
+      if(!v){toast('Sila beri penilaian bintang untuk semua soalan.','warning');return}
+      jawapan.push({questionId:q.questionId,rating:parseInt(v),jawapan:''});
+    }
+  }
+  loading(true);
+  try{
+    const r=await api('submitMaklumBalas',{courseId:st.courseId,regId:st.regId,jawapan});
+    toast(r.success?'Maklum balas berjaya dihantar!':(r.message||'Gagal.'),'success');
+    if(r.success)$('mbc').innerHTML='<div class="alert as" style="text-align:center;padding:40px">✅ Terima kasih! Maklum balas anda telah direkodkan.</div>';
+  }catch(e){toast('Ralat sambungan.','danger')}
+  loading(false);
 }
 async function submitMB(ids){
   const j={};
