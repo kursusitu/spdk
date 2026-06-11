@@ -349,7 +349,7 @@ async function loadDashPeserta(){
     </div>
     <div class="card"><h3 style="margin-bottom:16px;font-size:16px">Kursus Terkini</h3>
     ${(d.pendaftaran||[]).length?`<div class="tw"><table><thead><tr><th>Kursus</th><th>Tarikh</th><th>Status</th></tr></thead><tbody>
-      ${d.kursusTerkini.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikhKursus||'-'}</td><td>${badge(k.status)}</td></tr>`).join('')}
+      ${d.pendaftaran.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikhKursus||'-'}</td><td>${badge(k.status)}</td></tr>`).join('')}
     </tbody></table></div>`:'<p style="color:#6b7280;font-size:14px">Tiada pendaftaran kursus lagi.</p>'}
     </div>`;
   }catch(e){toast('Ralat memuatkan dashboard.','danger')}
