@@ -375,7 +375,7 @@ function pgKatalog(){
     try{
       const r=await api('getSenaraiKursusAktif');
       if(!r.success){$('kc').innerHTML=`<div class="alert ad">${r.message}</div>`;return}
-      const ks=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+      const ks=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
       $('kc').innerHTML=ks.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
         ${ks.map(k=>`<div class="card"><div style="font-weight:700;font-size:16px;margin-bottom:8px">${k.namaKursus}</div>
         <div style="font-size:13px;color:#6b7280;margin-bottom:12px">${k.tarikhMulaInput||''} – ${k.tarikhTamatInput||''}</div>
@@ -397,7 +397,7 @@ function pgPendaftaranSaya(){
   (async()=>{
     try{
       const r=await api('getSenaraiPendaftaran');
-      const rows=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+      const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
       $('psc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th></tr></thead><tbody>
         ${rows.map(x=>`<tr><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td></tr>`).join('')}
       </tbody></table></div>`:'<div class="alert ai">Tiada rekod pendaftaran.</div>';
@@ -409,7 +409,7 @@ function pgSijilSaya(){
   (async()=>{
     try{
       const r=await api('getSijilSaya');
-      const s=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+      const s=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
       $('sijc').innerHTML=s.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
         ${s.map(x=>`<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:12px">🎓</div>
         <div style="font-weight:700;margin-bottom:6px">${x.namaKursus}</div>
@@ -454,7 +454,7 @@ async function submitMB(ids){
 async function loadMBAdmin(){
   try{
     const r=await api('getSenaraiMaklumBalas');
-    const rows=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+    const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
     $('mbc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh</th><th>Purata</th></tr></thead><tbody>
       ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.namaKursus}</td><td>${x.tarikh||'-'}</td><td>${x.purata||'-'}</td></tr>`).join('')}
     </tbody></table></div>`:'<div class="alert ai">Tiada maklum balas lagi.</div>';
@@ -525,7 +525,7 @@ function pgAdminKursus(){
 async function loadKursus(){
   try{
     const r=await api('getSenaraiKursus');
-    const rows=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+    const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
     $('kuc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama Kursus</th><th>Tarikh Mula</th><th>Tarikh Tamat</th><th>Status</th><th></th></tr></thead><tbody>
       ${rows.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikhMulaInput||'-'}</td><td>${k.tarikhTamatInput||'-'}</td><td>${badge(k.status||'aktif')}</td>
       <td><button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.courseId}','${k.namaKursus.replace(/'/g,'')}')">Batal</button></td></tr>`).join('')}
@@ -574,7 +574,7 @@ function pgAdminPend(){
 async function loadPend(){
   try{
     const r=await api('getSenaraiPendaftaran',{semua:true});
-    const rows=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+    const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
     $('apc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>
       ${rows.map(x=>`<tr><td>${x.namaPeserta||x.nama||'-'}</td><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td>
       <td style="display:flex;gap:6px">${x.status==='menunggu'?`<button class="btn btn-success btn-sm" onclick="lulusPend('${x.regId||x.idPendaftaran}')">Lulus</button><button class="btn btn-danger btn-sm" onclick="tolakPend('${x.regId||x.idPendaftaran}')">Tolak</button>`:'-'}</td></tr>`).join('')}
@@ -597,16 +597,16 @@ function pgKehadiran(){
       <div class="fg"><label>Pilih Kursus</label><select id="kh-sel" onchange="loadKH(this.value)"><option value="">-- Pilih Kursus --</option></select></div>
       <div id="khc"></div>
     </div>`));
-  (async()=>{try{const r=await api('getSenaraiKursus');(r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[]).forEach(k=>{const o=document.createElement('option');o.value=k.courseId;o.textContent=k.namaKursus;$('kh-sel').appendChild(o)})}catch(e){}})();
+  (async()=>{try{const r=await api('getSenaraiKursus');(r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[]).forEach(k=>{const o=document.createElement('option');o.value=k.courseId;o.textContent=k.namaKursus;$('kh-sel').appendChild(o)})}catch(e){}})();
 }
 async function loadKH(id){
   if(!id)return;
   $('khc').innerHTML='<div class="alert ai">Memuatkan...</div>';
   try{
     const r=await api('getSenaraiKehadiran',{courseId:id});
-    const rows=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+    const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
     $('khc').innerHTML=rows.length?`<div style="margin-top:16px" class="tw"><table><thead><tr><th>Peserta</th><th>Hari</th><th>Status</th><th></th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${x.nama||'-'}</td><td>${x.hari||'-'}</td><td>${badge(x.status||'menunggu')}</td>
+      ${rows.map(x=>`<tr><td>${x.nama||'-'}</td><td>${x.hadir?'Hadir':'Belum'}</td><td>${badge(x.hadir?'lulus':'menunggu')}</td>
       <td><button class="btn btn-primary btn-sm" onclick="rekodHadir('${x.attendId||x.regId}','${id}')">Rekod Hadir</button></td></tr>`).join('')}
     </tbody></table></div>`:'<div style="margin-top:16px" class="alert ai">Tiada rekod kehadiran untuk kursus ini.</div>';
   }catch(e){$('khc').innerHTML='<div class="alert ad">Ralat.</div>'}
@@ -639,7 +639,7 @@ function pgSuratTawaran(){
   (async()=>{
     try{
       const r=await api('getSenaraiTawaran');
-      const rows=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+      const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
       $('stc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh Hantar</th><th>Status</th><th></th></tr></thead><tbody>
         ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.namaKursus}</td><td>${x.tarikhHantar||'-'}</td><td>${badge(x.statusTawaran||'menunggu')}</td>
         <td><button class="btn btn-primary btn-sm" onclick="hantarTawaran('${x.regId||x.idPendaftaran}')">Hantar Surat</button></td></tr>`).join('')}
@@ -675,7 +675,7 @@ async function loadPengguna(){
   $('pgc').innerHTML='<div class="alert ai">Memuatkan...</div>';
   try{
     const r=await api('getSenaraiPengguna',{jawatan:j});
-    const rows=r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
+    const rows=r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
     $('pgc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama</th><th>E-mel</th><th>Jawatan</th><th>Gred</th><th>Role</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>
       ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.email||x.emel||'-'}</td><td>${x.jawatan||'-'}</td><td>${x.gred||'-'}</td><td>${x.role}</td>
       <td>${badge(x.status==='aktif'?'aktif':'batal')}</td>
