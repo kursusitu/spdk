@@ -576,7 +576,7 @@ async function loadPend(){
     const r=await api('getSenaraiPendaftaran',{semua:true});
     const rows=r.kursus||r.pendaftaran||r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
     $('apc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${x.nama||x.namaUser||'-'}</td><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td>
+      ${rows.map(x=>`<tr><td>${x.namaPeserta||x.nama||'-'}</td><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td>
       <td style="display:flex;gap:6px">${x.status==='menunggu'?`<button class="btn btn-success btn-sm" onclick="lulusPend('${x.regId||x.idPendaftaran}')">Lulus</button><button class="btn btn-danger btn-sm" onclick="tolakPend('${x.regId||x.idPendaftaran}')">Tolak</button>`:'-'}</td></tr>`).join('')}
     </tbody></table></div>`:'<div class="alert ai">Tiada pendaftaran.</div>';
   }catch(e){$('apc').innerHTML='<div class="alert ad">Ralat.</div>'}
