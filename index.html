@@ -343,7 +343,7 @@ async function loadDashPeserta(){
     $('dc').innerHTML=`
     <div class="sg">
       <div class="sc"><div class="si" style="background:#eff6ff">📚</div><div class="sn">${d.jumlahDaftar||0}</div><div class="sl">Pendaftaran</div></div>
-      <div class="sc"><div class="si" style="background:#ecfdf5">✅</div><div class="sn">${d.jumlahLulus||0}</div><div class="sl">Lulus</div></div>
+      <div class="sc"><div class="si" style="background:#ecfdf5">✅</div><div class="sn">${d.statPeserta&&d.statPeserta.jumlahDaftar||0}</div><div class="sl">Lulus</div></div>
       <div class="sc"><div class="si" style="background:#fefce8">🎓</div><div class="sn">${d.statEcert||0}</div><div class="sl">Sijil</div></div>
       <div class="sc"><div class="si" style="background:#fdf4ff">⭐</div><div class="sn">${d.jumlahMaklumBalas||0}</div><div class="sl">Maklum Balas</div></div>
     </div>
@@ -627,7 +627,7 @@ function pgLaporan(){
       <div class="sg">
         <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.statPeserta||0}</div><div class="sl">Jumlah Pengguna</div></div>
         <div class="sc"><div class="si" style="background:#ecfdf5">📚</div><div class="sn">${d.statKursus||0}</div><div class="sl">Jumlah Kursus</div></div>
-        <div class="sc"><div class="si" style="background:#fefce8">✅</div><div class="sn">${d.jumlahLulus||0}</div><div class="sl">Pendaftaran Lulus</div></div>
+        <div class="sc"><div class="si" style="background:#fefce8">✅</div><div class="sn">${d.statPeserta&&d.statPeserta.jumlahDaftar||0}</div><div class="sl">Pendaftaran Lulus</div></div>
         <div class="sc"><div class="si" style="background:#fdf4ff">🎓</div><div class="sn">${d.statEcert||0}</div><div class="sl">Sijil Dikeluarkan</div></div>
       </div>
       <div class="card"><p style="color:#6b7280;font-size:14px">Export PDF akan tersedia dalam versi akan datang.</p></div>`;
