@@ -358,7 +358,7 @@ async function loadDashAdmin(){
   try{
     const r=await api('getDashboardAdmin');
     if(!r.success){toast(r.message||'Ralat.','danger');return}
-    const d=r.data||{};
+    const d=r||{};
     $('dc').innerHTML=`
     <div class="sg">
       <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.statPeserta||0}</div><div class="sl">Pengguna</div></div>
