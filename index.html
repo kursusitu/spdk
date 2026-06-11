@@ -635,17 +635,25 @@ function pgLaporan(){
   })();
 }
 function pgSuratTawaran(){
-  setView(shell('Surat Tawaran','surat-tawaran',`<div class="ph"><h2>Surat Tawaran</h2></div><div id="stc"><div class="alert ai">Memuatkan...</div></div>`));
-  (async()=>{
-    try{
-      const r=await api('getSenaraiTawaran');
-      const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
-      $('stc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh Hantar</th><th>Status</th><th></th></tr></thead><tbody>
-        ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.namaKursus}</td><td>${x.tarikhHantar||'-'}</td><td>${badge(x.statusTawaran||'menunggu')}</td>
-        <td><button class="btn btn-primary btn-sm" onclick="hantarTawaran('${x.regId||x.idPendaftaran}')">Hantar Surat</button></td></tr>`).join('')}
-      </tbody></table></div>`:'<div class="alert ai">Tiada surat tawaran.</div>';
-    }catch(e){$('stc').innerHTML='<div class="alert ad">Ralat.</div>'}
-  })();
+  setView(shell('Surat Tawaran','surat-tawaran',`
+    <div class="ph"><h2>Surat Tawaran</h2></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="fg"><label>Pilih Kursus</label><select id="st-sel" onchange="loadSuratTawaran(this.value)"><option value="">-- Pilih Kursus --</option></select></div>
+    </div>
+    <div id="stc"></div>`));
+  (async()=>{try{const r=await api('getSenaraiKursus');(r.kursus||[]).forEach(k=>{const o=document.createElement('option');o.value=k.courseId;o.textContent=k.namaKursus;$('st-sel').appendChild(o)})}catch(e){}})();
+}
+async function loadSuratTawaran(courseId){
+  if(!courseId)return;
+  $('stc').innerHTML='<div class="alert ai">Memuatkan...</div>';
+  try{
+    const r=await api('getSenaraiTawaran',{courseId});
+    const rows=r.peserta||[];
+    $('stc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Jawatan</th><th>E-mel</th><th></th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.jawatan||'-'}</td><td>${x.email||'-'}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="hantarTawaran('${x.regId}','${courseId}')">Hantar Surat</button></td></tr>`).join('')}
+    </tbody></table></div>`:'<div class="alert ai">Tiada peserta untuk kursus ini.</div>';
+  }catch(e){$('stc').innerHTML='<div class="alert ad">Ralat.</div>'}
 }
 async function hantarTawaran(id){
   if(!confirm('Hantar surat tawaran kepada peserta ini?'))return;
