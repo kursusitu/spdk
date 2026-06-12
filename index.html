@@ -118,7 +118,8 @@ const L={
   L01:'https://i.ibb.co/QvRWvqmk/1-Jata-KPKM.png',
   L02:'https://i.ibb.co/XfcvhqxC/2-Logo-DVS.png',
   L03:'https://i.ibb.co/4wJzqpVr/3-Logo-TVET-Malaysia.png',
-  L04:'https://i.ibb.co/zVLt1VsH/4-Malaysia-Madani.png'
+  L04:'https://i.ibb.co/zVLt1VsH/4-Malaysia-Madani.png',
+  L05:'https://i.ibb.co/twhChhXz/spdk.png'
 };
 let S={token:localStorage.getItem('spdk_token')||'',role:localStorage.getItem('spdk_role')||'',nama:localStorage.getItem('spdk_nama')||''};
 function saveAuth(t,r,n){S.token=t;S.role=r;S.nama=n;localStorage.setItem('spdk_token',t);localStorage.setItem('spdk_role',r);localStorage.setItem('spdk_nama',n)}
@@ -196,7 +197,7 @@ function shell(title,active,body){
 <button class="sb-toggle" onclick="togSb()">☰</button>
 <div class="mob-ov" id="mob-ov" onclick="togSb()"></div>
 <div class="sidebar" id="sb">
-  <div class="sb-brand"><img src="${L.L02}" alt="DVS"><span>SPDK ITU</span></div>
+  <div class="sb-brand"><img src="${L.L05}" alt="SPDK"><span>SPDK ITU</span></div>
   <nav class="sb-nav">
     <div class="nav-sec">${isA?'Pengurusan':'Portal Saya'}</div>
     ${navHtml}${saHtml}
