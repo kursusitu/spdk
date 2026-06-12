@@ -614,31 +614,55 @@ async function batalKursusAdmin(id,nama){
 }
 function modalKursus(){
   const m=document.createElement('div');m.className='modal-ov';m.id='mk';
-  m.innerHTML=`<div class="modal">
-    <div class="modal-title">Tambah Kursus Baru</div>
+  m.innerHTML=`<div class="modal" style="max-width:520px">
+    <div class="modal-title">Tambah Kursus Baharu</div>
     <div id="mka"></div>
-    <div class="fg"><label>Nama Kursus</label><input id="mkn" placeholder="Nama kursus"></div>
+    <div class="fg"><label>Nama Kursus</label><input id="mkn" placeholder="Contoh: Kursus Pengurusan Kesihatan Ternakan"></div>
+    <div class="fg"><label>Penerangan</label><textarea id="mkp" rows="2" placeholder="Keterangan ringkas kursus..."></textarea></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="fg"><label>Tarikh Mula</label><input type="date" id="mkm"></div>
       <div class="fg"><label>Tarikh Tamat</label><input type="date" id="mkt"></div>
     </div>
-    <div class="fg"><label>Kapasiti</label><input type="number" id="mkk" placeholder="cth. 30"></div>
-    <div class="fg"><label>Penerangan</label><textarea id="mkp" rows="2"></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg"><label>Tarikh Mula Pendaftaran</label><input type="date" id="mkrd"></div>
+      <div class="fg"><label>Tarikh Tutup Pendaftaran</label><input type="date" id="mktd"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg"><label>Masa Mula</label><input type="time" id="mkmm"></div>
+      <div class="fg"><label>Masa Tamat</label><input type="time" id="mkmt"></div>
+    </div>
+    <div class="fg"><label>Tempat</label><input id="mkl" placeholder="Contoh: Dewan Serbaguna DVS, Putrajaya"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
       <button class="btn btn-secondary" onclick="document.getElementById('mk').remove()">Batal</button>
-      <button class="btn btn-primary" onclick="saveKursus()">Simpan</button>
+      <button class="btn btn-primary" id="mk-btn-save" onclick="saveKursus()">Tambah Kursus</button>
     </div>
   </div>`;
   document.body.appendChild(m);
 }
 async function saveKursus(){
-  loading(true);
+  const namaKursus=$('mkn').value.trim();
+  const penerangan=$('mkp').value.trim();
+  const tarikhMula=$('mkm').value;
+  const tarikhTamat=$('mkt').value;
+  const masaMula=$('mkmm').value;
+  const masaTamat=$('mkmt').value;
+  const tempat=$('mkl').value.trim();
+  if(!namaKursus||!penerangan||!tarikhMula||!tarikhTamat||!masaMula||!masaTamat||!tempat){
+    $('mka').innerHTML='<div class="alert ad">Sila isi semua medan bertanda wajib.</div>';
+    return;
+  }
+  const btn=$('mk-btn-save');
+  btn.disabled=true; loading(true);
   try{
-    const r=await api('ciptaKursus',{namaKursus:$('mkn').value,tarikhMula:$('mkm').value,tarikhTamat:$('mkt').value,kapasiti:$('mkk').value,penerangan:$('mkp').value});
+    const r=await api('ciptaKursus',{
+      namaKursus, penerangan, tarikhMula, tarikhTamat,
+      masaMula, masaTamat, tempat,
+      tarikhMulaDaftar:$('mkrd').value, tarikhTutupDaftar:$('mktd').value
+    });
     if(r.success){toast('Kursus berjaya ditambah.','success');document.getElementById('mk').remove();loadKursus()}
     else $('mka').innerHTML=`<div class="alert ad">${r.message||'Gagal.'}</div>`;
   }catch(e){toast('Ralat sambungan.','danger')}
-  loading(false);
+  loading(false); btn.disabled=false;
 }
 var apAllData=[];
 var apTabAktif='semua';
