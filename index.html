@@ -360,14 +360,28 @@ async function loadDashAdmin(){
     const r=await api('getDashboardAdmin');
     if(!r.success){toast(r.message||'Ralat.','danger');return}
     const d=r||{};
+    const pm=d.pendaftaranMenunggu||[];
+    const kt=d.kursusTamat||[];
     $('dc').innerHTML=`
     <div class="sg">
-      <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.statPeserta||0}</div><div class="sl">Pengguna</div></div>
-      <div class="sc"><div class="si" style="background:#ecfdf5">📚</div><div class="sn">${d.statKursus||0}</div><div class="sl">Kursus Aktif</div></div>
-      <div class="sc"><div class="si" style="background:#fefce8">⏳</div><div class="sn">${d.statMenunggu||0}</div><div class="sl">Menunggu Lulus</div></div>
-      <div class="sc"><div class="si" style="background:#fdf4ff">🎓</div><div class="sn">${d.statEcert||0}</div><div class="sl">Sijil</div></div>
+      <div class="sc"><div class="si" style="background:#eff6ff">📚</div><div class="sn">${d.statKursus||0}</div><div class="sl">Kursus Aktif</div></div>
+      <div class="sc"><div class="si" style="background:#fefce8">⏳</div><div class="sn">${d.statMenunggu||0}</div><div class="sl">Menunggu Pengesahan</div></div>
+      <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.statPeserta||0}</div><div class="sl">Jumlah Peserta</div></div>
+      <div class="sc"><div class="si" style="background:#fdf4ff">🎓</div><div class="sn">${d.statEcert||0}</div><div class="sl">eCERT Dijana</div></div>
+      <div class="sc"><div class="si" style="background:#f3f4f6">✅</div><div class="sn">${d.statTamat||0}</div><div class="sl">Kursus Tamat</div></div>
     </div>
-    <div class="card"><h3 style="margin-bottom:4px">Selamat datang, ${S.nama}</h3><p style="color:#6b7280;font-size:14px">Panel pengurusan SPDK ITU</p></div>`;
+    <div class="card" style="margin-bottom:16px">
+      <div class="ph" style="margin-bottom:12px"><h3 style="font-size:15px">Pendaftaran Menunggu Pengesahan</h3><a href="#admin-pendaftaran" style="font-size:13px">Lihat Semua →</a></div>
+      ${pm.length?`<div class="tw"><table><thead><tr><th>Nama Peserta</th><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th></tr></thead><tbody>
+        ${pm.map(x=>`<tr><td>${x.namaPeserta}</td><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td></tr>`).join('')}
+      </tbody></table></div>`:'<p style="color:#6b7280;font-size:14px;text-align:center;padding:16px 0">Tiada pendaftaran menunggu pengesahan.</p>'}
+    </div>
+    <div class="card">
+      <div class="ph" style="margin-bottom:12px"><h3 style="font-size:15px">Kursus Telah Tamat</h3><a href="#admin-kursus" style="font-size:13px">Urus Kursus →</a></div>
+      ${kt.length?`<div class="tw"><table><thead><tr><th>Nama Kursus</th><th>Tarikh Kursus</th><th>Tempat</th></tr></thead><tbody>
+        ${kt.map(x=>`<tr><td>${x.namaKursus}</td><td>${x.tarikhKursus||'-'}</td><td>${x.tempat||'-'}</td></tr>`).join('')}
+      </tbody></table></div>`:'<p style="color:#6b7280;font-size:14px;text-align:center;padding:16px 0">Tiada kursus tamat.</p>'}
+    </div>`;
   }catch(e){toast('Ralat memuatkan dashboard.','danger')}
 }
 function pgKatalog(){
