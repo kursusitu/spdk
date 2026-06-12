@@ -626,19 +626,78 @@ async function saveKursus(){
   }catch(e){toast('Ralat sambungan.','danger')}
   loading(false);
 }
+var apAllData=[];
+var apTabAktif='semua';
+
 function pgAdminPend(){
-  setView(shell('Urus Pendaftaran','admin-pendaftaran',`<div class="ph"><h2>Urus Pendaftaran</h2></div><div id="apc"><div class="alert ai">Memuatkan...</div></div>`));
+  setView(shell('Urus Pendaftaran','admin-pendaftaran',`
+    <div class="ph"><h2>Urus Pendaftaran</h2></div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-primary btn-sm ap-tab" data-tab="semua" onclick="apSetTab('semua')">Semua <span id="ap-cnt-semua">0</span></button>
+        <button class="btn btn-secondary btn-sm ap-tab" data-tab="menunggu" onclick="apSetTab('menunggu')">Menunggu <span id="ap-cnt-menunggu">0</span></button>
+        <button class="btn btn-secondary btn-sm ap-tab" data-tab="lulus" onclick="apSetTab('lulus')">Lulus <span id="ap-cnt-lulus">0</span></button>
+        <button class="btn btn-secondary btn-sm ap-tab" data-tab="tolak" onclick="apSetTab('tolak')">Ditolak <span id="ap-cnt-tolak">0</span></button>
+        <button class="btn btn-secondary btn-sm ap-tab" data-tab="batal" onclick="apSetTab('batal')">Dibatal <span id="ap-cnt-batal">0</span></button>
+      </div>
+      <select id="ap-filter-kursus" onchange="apApplyFilter()" style="max-width:280px"><option value="">Semua Kursus</option></select>
+    </div>
+    <div id="apc"><div class="alert ai">Memuatkan...</div></div>`));
   loadPend();
 }
+
 async function loadPend(){
   try{
     const r=await api('getSenaraiPendaftaran',{semua:true});
-    const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
-    $('apc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${x.namaPeserta||x.nama||'-'}</td><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td>
-      <td style="display:flex;gap:6px">${x.status==='menunggu'?`<button class="btn btn-success btn-sm" onclick="lulusPend('${x.regId||x.idPendaftaran}')">Lulus</button><button class="btn btn-danger btn-sm" onclick="tolakPend('${x.regId||x.idPendaftaran}')">Tolak</button>`:'-'}</td></tr>`).join('')}
-    </tbody></table></div>`:'<div class="alert ai">Tiada pendaftaran.</div>';
+    apAllData=r.pendaftaran||[];
+    apPopulateKursusFilter();
+    apUpdateCounts();
+    apApplyFilter();
   }catch(e){$('apc').innerHTML='<div class="alert ad">Ralat.</div>'}
+}
+
+function apPopulateKursusFilter(){
+  const seen={};
+  let opts='<option value="">Semua Kursus</option>';
+  apAllData.forEach(r=>{
+    if(r.namaKursus&&!seen[r.courseId]){seen[r.courseId]=true;opts+=`<option value="${r.courseId}">${r.namaKursus}</option>`}
+  });
+  $('ap-filter-kursus').innerHTML=opts;
+}
+
+function apUpdateCounts(){
+  const counts={semua:apAllData.length,menunggu:0,lulus:0,tolak:0,batal:0};
+  apAllData.forEach(r=>{if(counts[r.status]!==undefined)counts[r.status]++});
+  ['semua','menunggu','lulus','tolak','batal'].forEach(s=>{
+    const el=$('ap-cnt-'+s); if(el)el.textContent=counts[s];
+  });
+}
+
+function apSetTab(tab){
+  apTabAktif=tab;
+  document.querySelectorAll('.ap-tab').forEach(b=>{
+    const active=b.dataset.tab===tab;
+    b.classList.toggle('btn-primary',active);
+    b.classList.toggle('btn-secondary',!active);
+  });
+  apApplyFilter();
+}
+
+function apApplyFilter(){
+  const kursusFilter=$('ap-filter-kursus').value;
+  const list=apAllData.filter(r=>{
+    const matchTab=apTabAktif==='semua'||r.status===apTabAktif;
+    const matchKursus=!kursusFilter||r.courseId===kursusFilter;
+    return matchTab&&matchKursus;
+  });
+  apRenderTable(list);
+}
+
+function apRenderTable(rows){
+  $('apc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>
+    ${rows.map(x=>`<tr><td>${x.namaPeserta||x.nama||'-'}</td><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td>
+    <td style="display:flex;gap:6px">${x.status==='menunggu'?`<button class="btn btn-success btn-sm" onclick="lulusPend('${x.regId||x.idPendaftaran}')">Lulus</button><button class="btn btn-danger btn-sm" onclick="tolakPend('${x.regId||x.idPendaftaran}')">Tolak</button>`:'<span style="font-size:12px;color:var(--muted)">—</span>'}</td></tr>`).join('')}
+  </tbody></table></div>`:'<div class="alert ai">Tiada rekod pendaftaran sepadan dengan penapis.</div>';
 }
 async function lulusPend(id){loading(true);try{const r=await api('lulusPendaftaran',{idPendaftaran:id,regId:id});toast(r.success?'Pendaftaran diluluskan.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPend()}catch(e){toast('Ralat.','danger')}loading(false)}
 async function tolakPend(id){
