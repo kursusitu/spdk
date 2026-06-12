@@ -632,17 +632,34 @@ var apTabAktif='semua';
 function pgAdminPend(){
   setView(shell('Urus Pendaftaran','admin-pendaftaran',`
     <div class="ph"><h2>Urus Pendaftaran</h2></div>
-    <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <button class="btn btn-primary btn-sm ap-tab" data-tab="semua" onclick="apSetTab('semua')">Semua <span id="ap-cnt-semua">0</span></button>
-        <button class="btn btn-secondary btn-sm ap-tab" data-tab="menunggu" onclick="apSetTab('menunggu')">Menunggu <span id="ap-cnt-menunggu">0</span></button>
-        <button class="btn btn-secondary btn-sm ap-tab" data-tab="lulus" onclick="apSetTab('lulus')">Lulus <span id="ap-cnt-lulus">0</span></button>
-        <button class="btn btn-secondary btn-sm ap-tab" data-tab="tolak" onclick="apSetTab('tolak')">Ditolak <span id="ap-cnt-tolak">0</span></button>
-        <button class="btn btn-secondary btn-sm ap-tab" data-tab="batal" onclick="apSetTab('batal')">Dibatal <span id="ap-cnt-batal">0</span></button>
-      </div>
-      <select id="ap-filter-kursus" onchange="apApplyFilter()" style="max-width:280px"><option value="">Semua Kursus</option></select>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-primary btn-sm" id="ap-page-tab-senarai" onclick="apSwitchPage('senarai')">Senarai Pendaftaran</button>
+      <button class="btn btn-secondary btn-sm" id="ap-page-tab-assign" onclick="apSwitchPage('assign')">+ Assign Peserta</button>
     </div>
-    <div id="apc"><div class="alert ai">Memuatkan...</div></div>`));
+
+    <div id="ap-panel-senarai">
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-primary btn-sm ap-tab" data-tab="semua" onclick="apSetTab('semua')">Semua <span id="ap-cnt-semua">0</span></button>
+          <button class="btn btn-secondary btn-sm ap-tab" data-tab="menunggu" onclick="apSetTab('menunggu')">Menunggu <span id="ap-cnt-menunggu">0</span></button>
+          <button class="btn btn-secondary btn-sm ap-tab" data-tab="lulus" onclick="apSetTab('lulus')">Lulus <span id="ap-cnt-lulus">0</span></button>
+          <button class="btn btn-secondary btn-sm ap-tab" data-tab="tolak" onclick="apSetTab('tolak')">Ditolak <span id="ap-cnt-tolak">0</span></button>
+          <button class="btn btn-secondary btn-sm ap-tab" data-tab="batal" onclick="apSetTab('batal')">Dibatal <span id="ap-cnt-batal">0</span></button>
+        </div>
+        <select id="ap-filter-kursus" onchange="apApplyFilter()" style="max-width:280px"><option value="">Semua Kursus</option></select>
+      </div>
+      <div id="apc"><div class="alert ai">Memuatkan...</div></div>
+    </div>
+
+    <div id="ap-panel-assign" style="display:none">
+      <div class="card" style="margin-bottom:16px">
+        <div class="fg"><label>Pilih Kursus</label>
+          <select id="ap-assign-kursus" onchange="apLoadPesertaBelumDaftar()"><option value="">-- Pilih kursus --</option></select>
+        </div>
+      </div>
+      <div id="ap-assign-content"></div>
+    </div>`));
   loadPend();
 }
 
@@ -698,6 +715,103 @@ function apRenderTable(rows){
     ${rows.map(x=>`<tr><td>${x.namaPeserta||x.nama||'-'}</td><td>${x.namaKursus}</td><td>${x.tarikhDaftar||'-'}</td><td>${badge(x.status)}</td>
     <td style="display:flex;gap:6px">${x.status==='menunggu'?`<button class="btn btn-success btn-sm" onclick="lulusPend('${x.regId||x.idPendaftaran}')">Lulus</button><button class="btn btn-danger btn-sm" onclick="tolakPend('${x.regId||x.idPendaftaran}')">Tolak</button>`:'<span style="font-size:12px;color:var(--muted)">—</span>'}</td></tr>`).join('')}
   </tbody></table></div>`:'<div class="alert ai">Tiada rekod pendaftaran sepadan dengan penapis.</div>';
+}
+
+var apKursusAktifCache={};
+var apPesertaBelumDaftar=[];
+
+function apSwitchPage(page){
+  $('ap-page-tab-senarai').classList.toggle('btn-primary',page==='senarai');
+  $('ap-page-tab-senarai').classList.toggle('btn-secondary',page!=='senarai');
+  $('ap-page-tab-assign').classList.toggle('btn-primary',page==='assign');
+  $('ap-page-tab-assign').classList.toggle('btn-secondary',page!=='assign');
+  $('ap-panel-senarai').style.display=page==='senarai'?'':'none';
+  $('ap-panel-assign').style.display=page==='assign'?'':'none';
+  if(page==='assign'&&!Object.keys(apKursusAktifCache).length)apLoadKursusAssign();
+}
+
+async function apLoadKursusAssign(){
+  try{
+    const r=await api('getSenaraiKursus');
+    (r.kursus||[]).filter(k=>(k.status||'aktif')==='aktif').forEach(k=>{
+      apKursusAktifCache[k.courseId]=k;
+      const o=document.createElement('option');
+      o.value=k.courseId; o.textContent=k.namaKursus;
+      $('ap-assign-kursus').appendChild(o);
+    });
+  }catch(e){}
+}
+
+async function apLoadPesertaBelumDaftar(){
+  const courseId=$('ap-assign-kursus').value;
+  if(!courseId){$('ap-assign-content').innerHTML='';return}
+  $('ap-assign-content').innerHTML='<div class="alert ai">Memuatkan...</div>';
+  try{
+    const r=await api('getPesertaBelumDaftar',{courseId});
+    if(!r.success){$('ap-assign-content').innerHTML=`<div class="alert ad">${r.message||'Ralat.'}</div>`;return}
+    apPesertaBelumDaftar=r.peserta||[];
+    if(!apPesertaBelumDaftar.length){$('ap-assign-content').innerHTML='<div class="alert ai">Semua peserta aktif sudah didaftarkan untuk kursus ini.</div>';return}
+    $('ap-assign-content').innerHTML=`
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <span style="font-size:13px;font-weight:600">Peserta Belum Mendaftar (${apPesertaBelumDaftar.length})</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="apPilihSemua(true)">Pilih Semua</button>
+            <button class="btn btn-secondary btn-sm" onclick="apPilihSemua(false)">Nyahpilih</button>
+          </div>
+        </div>
+        <div class="tw"><table><thead><tr>
+          <th style="width:36px"><input type="checkbox" id="ap-chk-semua" onchange="apToggleSemua(this)"></th>
+          <th>Nama</th><th>Jawatan</th><th>Gred</th><th>Bahagian</th>
+        </tr></thead><tbody>
+        ${apPesertaBelumDaftar.map((p,i)=>`<tr>
+          <td><input type="checkbox" class="ap-chk" data-idx="${i}" onchange="apKemaskiniPilihan()"></td>
+          <td>${p.nama}</td><td>${p.jawatan||'-'}</td><td>${p.gred||'-'}</td><td>${p.bahagian||'-'}</td>
+        </tr>`).join('')}
+        </tbody></table></div>
+        <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div style="font-size:13px;color:var(--muted)">Dipilih: <strong id="ap-bil-dipilih">0</strong> daripada ${apPesertaBelumDaftar.length}</div>
+          <button class="btn btn-primary" id="ap-btn-assign" onclick="apJalankanAssign('${courseId}')" disabled>Assign &amp; Hantar Emel</button>
+        </div>
+      </div>`;
+  }catch(e){$('ap-assign-content').innerHTML='<div class="alert ad">Ralat sistem.</div>'}
+}
+
+function apToggleSemua(chk){
+  document.querySelectorAll('.ap-chk').forEach(c=>c.checked=chk.checked);
+  apKemaskiniPilihan();
+}
+function apPilihSemua(val){
+  document.querySelectorAll('.ap-chk').forEach(c=>c.checked=val);
+  const all=$('ap-chk-semua'); if(all)all.checked=val;
+  apKemaskiniPilihan();
+}
+function apKemaskiniPilihan(){
+  const checks=document.querySelectorAll('.ap-chk');
+  let dipilih=0; checks.forEach(c=>{if(c.checked)dipilih++});
+  $('ap-bil-dipilih').textContent=dipilih;
+  $('ap-btn-assign').disabled=(dipilih===0);
+  const all=$('ap-chk-semua');
+  if(all){all.indeterminate=(dipilih>0&&dipilih<checks.length);all.checked=(dipilih===checks.length&&checks.length>0)}
+}
+
+async function apJalankanAssign(courseId){
+  const userIds=[];
+  document.querySelectorAll('.ap-chk:checked').forEach(c=>{
+    const idx=parseInt(c.dataset.idx,10);
+    if(apPesertaBelumDaftar[idx])userIds.push(apPesertaBelumDaftar[idx].userId);
+  });
+  if(!userIds.length){toast('Pilih sekurang-kurangnya seorang peserta.','warning');return}
+  if(userIds.length>20){toast('Maksimum 20 peserta setiap assign.','warning');return}
+  if(!confirm(`Assign ${userIds.length} peserta ke kursus ini? Emel notifikasi akan dihantar.`))return;
+
+  loading(true);
+  try{
+    const r=await api('assignPesertaKeKursus',{courseId,userIds});
+    toast(r.message||(r.success?'Berjaya.':'Gagal.'),r.success?'success':'danger');
+    if(r.success)apLoadPesertaBelumDaftar();
+  }catch(e){toast('Ralat sambungan.','danger')}
+  loading(false);
 }
 async function lulusPend(id){loading(true);try{const r=await api('lulusPendaftaran',{idPendaftaran:id,regId:id});toast(r.success?'Pendaftaran diluluskan.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPend()}catch(e){toast('Ralat.','danger')}loading(false)}
 async function tolakPend(id){
