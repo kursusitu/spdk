@@ -822,32 +822,252 @@ async function tolakPend(id){
   try{const r=await api('tolakPendaftaran',{idPendaftaran:id,regId:id,sebabTolak:sebab});toast(r.success?'Pendaftaran ditolak.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPend()}
   catch(e){toast('Ralat.','danger')}loading(false);
 }
+var khKursusData=[];
+var khPesertaData=[];
+var khHariTerpilih=null;
+
 function pgKehadiran(){
   setView(shell('Urus Kehadiran','kehadiran',`
     <div class="ph"><h2>Urus Kehadiran</h2></div>
-    <div class="card">
-      <div class="fg"><label>Pilih Kursus</label><select id="kh-sel" onchange="loadKH(this.value)"><option value="">-- Pilih Kursus --</option></select></div>
-      <div id="khc"></div>
-    </div>`));
-  (async()=>{try{const r=await api('getSenaraiKursus');(r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[]).forEach(k=>{const o=document.createElement('option');o.value=k.courseId;o.textContent=k.namaKursus;$('kh-sel').appendChild(o)})}catch(e){}})();
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fg" style="margin-bottom:0"><label>Pilih Kursus</label>
+          <select id="kh-sel" onchange="khOnKursusChange()"><option value="">-- Pilih Kursus --</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:0;display:none" id="kh-hari-wrap">
+          <label>Pilih Hari</label>
+          <select id="kh-hari-sel" onchange="khOnHariChange()"><option value="">-- Pilih Hari --</option></select>
+        </div>
+      </div>
+    </div>
+    <div id="kh-qr"></div>
+    <div id="khc"></div>`));
+  (async()=>{
+    try{
+      const r=await api('getKursusUntukKehadiran');
+      khKursusData=r.kursus||[];
+      if(!khKursusData.length){$('kh-sel').innerHTML='<option value="">Tiada kursus dengan peserta lulus</option>';$('kh-sel').disabled=true;return}
+      $('kh-sel').innerHTML='<option value="">-- Pilih Kursus --</option>'+khKursusData.map(k=>`<option value="${k.courseId}">${k.namaKursus} (${formatTarikhKH(k.tarikhMula)}${k.tarikhMula!==k.tarikhTamat?' – '+formatTarikhKH(k.tarikhTamat):''})</option>`).join('');
+    }catch(e){}
+  })();
 }
-async function loadKH(id){
-  if(!id)return;
-  $('khc').innerHTML='<div class="alert ai">Memuatkan...</div>';
+
+function khGenerateHari(tarikhMula,tarikhTamat){
+  const hasil=[];
+  let d=new Date(tarikhMula+'T00:00:00');
+  const end=new Date(tarikhTamat+'T00:00:00');
+  let h=1;
+  while(d<=end&&h<=30){
+    const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    hasil.push({hari:String(h),tarikh:ymd});
+    d.setDate(d.getDate()+1); h++;
+  }
+  return hasil;
+}
+
+function formatTarikhKH(ymd){
+  if(!ymd)return '-';
+  const p=ymd.split('-'); if(p.length!==3)return ymd;
+  const bln=['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogos','Sep','Okt','Nov','Dis'];
+  return parseInt(p[2],10)+' '+bln[parseInt(p[1],10)-1]+' '+p[0];
+}
+function khYmdToDDMMYYYY(ymd){
+  const p=ymd.split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):ymd;
+}
+function khDDMMYYYYtoYMD(s){
+  const p=s.split('/'); return p.length===3?(p[2]+'-'+p[1]+'-'+p[0]):s;
+}
+
+function khOnKursusChange(){
+  const courseId=$('kh-sel').value;
+  $('kh-hari-wrap').style.display='none';
+  $('kh-qr').innerHTML='';
+  $('khc').innerHTML='';
+  khHariTerpilih=null; khPesertaData=[];
+  if(!courseId)return;
+  const k=khKursusData.find(x=>x.courseId===courseId);
+  if(!k)return;
+  const hariList=khGenerateHari(k.tarikhMula,k.tarikhTamat);
+  if(hariList.length===1){
+    khHariTerpilih=hariList[0];
+    khLoadPeserta(courseId,khHariTerpilih.hari);
+    khLoadQR(courseId,khHariTerpilih.hari,khHariTerpilih.tarikh);
+  }else{
+    $('kh-hari-sel').innerHTML='<option value="">-- Pilih Hari --</option>'+hariList.map(h=>`<option value="${h.hari}" data-tarikh="${h.tarikh}">Hari ${h.hari} — ${formatTarikhKH(h.tarikh)}</option>`).join('');
+    $('kh-hari-wrap').style.display='';
+    $('khc').innerHTML='<div class="alert ai">Pilih hari untuk melihat senarai peserta</div>';
+  }
+}
+
+function khOnHariChange(){
+  const sel=$('kh-hari-sel');
+  const hariVal=sel.value;
+  const courseId=$('kh-sel').value;
+  if(!hariVal||!courseId)return;
+  const opt=sel.options[sel.selectedIndex];
+  khHariTerpilih={hari:hariVal,tarikh:opt.dataset.tarikh};
+  khLoadPeserta(courseId,hariVal);
+  khLoadQR(courseId,hariVal,opt.dataset.tarikh);
+}
+
+async function khLoadPeserta(courseId,hari){
+  $('khc').innerHTML='<div class="alert ai">Memuatkan senarai peserta...</div>';
+  khPesertaData=[];
   try{
-    const r=await api('getSenaraiKehadiran',{courseId:id});
-    const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
-    $('khc').innerHTML=rows.length?`<div style="margin-top:16px" class="tw"><table><thead><tr><th>Peserta</th><th>Hari</th><th>Status</th><th></th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${x.nama||'-'}</td><td>${x.hadir?'Hadir':'Belum'}</td><td>${badge(x.hadir?'lulus':'menunggu')}</td>
-      <td><button class="btn btn-primary btn-sm" onclick="rekodHadir('${x.attendId||x.regId}','${id}')">Rekod Hadir</button></td></tr>`).join('')}
-    </tbody></table></div>`:'<div style="margin-top:16px" class="alert ai">Tiada rekod kehadiran untuk kursus ini.</div>';
-  }catch(e){$('khc').innerHTML='<div class="alert ad">Ralat.</div>'}
+    const r=await api('getSenaraiKehadiran',{courseId,hari});
+    if(!r.success){$('khc').innerHTML=`<div class="alert ad">${r.message||'Ralat.'}</div>`;return}
+    khPesertaData=r.peserta||[];
+    khRenderPeserta();
+  }catch(e){$('khc').innerHTML='<div class="alert ad">Ralat sistem.</div>'}
 }
-async function rekodHadir(attendId,idK){
-  loading(true);
-  try{const r=await api('rekodKehadiran',{attendId,courseId:idK,status:'hadir'});toast(r.success?'Kehadiran direkod.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadKH(idK)}
-  catch(e){toast('Ralat.','danger')}
-  loading(false);
+
+function khRenderPeserta(){
+  if(!khPesertaData.length){$('khc').innerHTML='<div class="alert ai">Tiada peserta berstatus "lulus" untuk kursus ini.</div>';return}
+  const hadir=khPesertaData.filter(p=>p.hadir).length;
+  $('khc').innerHTML=`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <span style="font-size:13px;font-weight:600">Senarai Peserta (${khPesertaData.length} orang)</span>
+      <span style="font-size:12px;color:var(--muted)"><strong id="kh-hadir-count">${hadir}</strong> / ${khPesertaData.length} hadir</span>
+    </div>
+    <div class="tw"><table><thead><tr>
+      <th style="width:40px">Bil</th><th>Nama</th><th>Jawatan / Bahagian</th>
+      <th style="width:50px;text-align:center"><input type="checkbox" id="kh-chk-semua" onchange="khToggleSemua(this)"></th>
+    </tr></thead><tbody>
+    ${khPesertaData.map((p,i)=>`<tr>
+      <td style="color:var(--muted);font-size:12px">${i+1}</td>
+      <td>${p.nama}</td>
+      <td style="font-size:12px;color:var(--muted)">${p.jawatan}<br>${p.bahagian}</td>
+      <td style="text-align:center"><input type="checkbox" class="kh-chk" data-idx="${i}" ${p.hadir?'checked':''} onchange="khOnCheckChange(this)"></td>
+    </tr>`).join('')}
+    </tbody></table></div>
+    <div style="margin-top:12px;display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" id="kh-btn-simpan" onclick="khSimpanKehadiran()">Simpan Kehadiran</button>
+    </div>
+  </div>`;
+  khSyncPilihSemua();
+}
+
+function khToggleSemua(chk){
+  document.querySelectorAll('.kh-chk').forEach(c=>{c.checked=chk.checked;khPesertaData[parseInt(c.dataset.idx)].hadir=chk.checked});
+  khUpdateRingkasan();
+}
+function khOnCheckChange(chk){
+  khPesertaData[parseInt(chk.dataset.idx)].hadir=chk.checked;
+  khSyncPilihSemua();
+  khUpdateRingkasan();
+}
+function khSyncPilihSemua(){
+  const all=$('kh-chk-semua'); if(!all)return;
+  const chks=document.querySelectorAll('.kh-chk');
+  const semua=Array.prototype.every.call(chks,c=>c.checked);
+  all.checked=semua;
+  all.indeterminate=!semua&&Array.prototype.some.call(chks,c=>c.checked);
+}
+function khUpdateRingkasan(){
+  const hadir=khPesertaData.filter(p=>p.hadir).length;
+  const el=$('kh-hadir-count'); if(el)el.textContent=hadir;
+}
+
+async function khSimpanKehadiran(){
+  if(!khPesertaData.length||!khHariTerpilih)return;
+  const courseId=$('kh-sel').value;
+  if(!courseId)return;
+  const btn=$('kh-btn-simpan');
+  btn.disabled=true; btn.textContent='Menyimpan...';
+  const rekods=khPesertaData.map(p=>({regId:p.regId,userId:p.userId,hadir:p.hadir}));
+  try{
+    const r=await api('rekodKehadiran',{courseId,hari:khHariTerpilih.hari,tarikhHadir:khHariTerpilih.tarikh,rekods});
+    toast(r.message||(r.success?'Berjaya.':'Gagal.'),r.success?'success':'danger');
+  }catch(e){toast('Ralat sambungan.','danger')}
+  btn.disabled=false; btn.textContent='Simpan Kehadiran';
+}
+
+async function khLoadQR(courseId,hari,tarikhYMD){
+  $('kh-qr').innerHTML='<div class="card"><div class="alert ai" style="margin:0">Semak status QR...</div></div>';
+  const tarikhDDMMYYYY=khYmdToDDMMYYYY(tarikhYMD);
+  try{
+    const r=await api('getStatusQR',{courseId,hari});
+    khRenderQR(r,courseId,hari,tarikhYMD,tarikhDDMMYYYY);
+  }catch(e){$('kh-qr').innerHTML='<div class="card"><div class="alert ad" style="margin:0">Ralat menyemak status QR.</div></div>'}
+}
+
+function khRenderQR(r,courseId,hari,tarikhYMD,tarikhDDMMYYYY){
+  const tarikhPapar=formatTarikhKH(tarikhYMD);
+  const label=`Hari ${hari} — ${tarikhPapar}`;
+  if(!r||!r.success||!r.exists){
+    $('kh-qr').innerHTML=`<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600">QR Code Kehadiran</span>
+        <span style="font-size:12px;color:var(--muted)">${label}</span>
+      </div>
+      <div class="alert ai" style="margin-bottom:8px">Tiada QR untuk sesi ini. Jana QR Code supaya peserta boleh scan kehadiran.</div>
+      <button class="btn btn-primary" id="kh-btn-jana" onclick="khJanaQR('${courseId}','${hari}','${tarikhDDMMYYYY}')">Jana QR Code</button>
+    </div>`;
+  }else{
+    $('kh-qr').innerHTML=`<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:13px;font-weight:600">QR Code Kehadiran</span>
+        <span style="font-size:12px;color:var(--muted)">${label}</span>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <img src="${r.qrUrl}" alt="QR Code" style="width:180px;height:180px;border:1px solid var(--border);border-radius:8px">
+        <div style="flex:1;min-width:160px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Jana Pada</div>
+          <div style="font-size:13px;margin-bottom:8px">${r.tarikhJana||'-'}</div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase">ID QR</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">${r.qrid||'-'}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="khMuatTurunQR('${r.qrUrl}')">Muat Turun QR</button>
+            <button class="btn btn-danger btn-sm" onclick="khJanaQRSemula('${courseId}','${hari}','${tarikhDDMMYYYY}')">Jana Semula</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+}
+
+async function khJanaQR(courseId,hari,tarikhDDMMYYYY){
+  const btn=$('kh-btn-jana');
+  if(btn){btn.disabled=true;btn.textContent='Menjana...'}
+  try{
+    const r=await api('getQRCode',{courseId,hari,tarikhKursus:tarikhDDMMYYYY});
+    if(r.success){khRenderQR(r,courseId,hari,khDDMMYYYYtoYMD(tarikhDDMMYYYY),tarikhDDMMYYYY);toast('QR Code berjaya dijana.','success')}
+    else{if(btn){btn.disabled=false;btn.textContent='Jana QR Code'}toast(r.message||'Ralat menjana QR.','danger')}
+  }catch(e){if(btn){btn.disabled=false;btn.textContent='Jana QR Code'}toast('Ralat sistem.','danger')}
+}
+
+function khJanaQRSemula(courseId,hari,tarikhDDMMYYYY){
+  if(!confirm('QR lama akan tidak sah serta-merta. Peserta yang belum scan perlu guna QR baru ini.\n\nTeruskan jana QR Code baharu?'))return;
+  khJanaQRSemulaKonfirm(courseId,hari,tarikhDDMMYYYY);
+}
+
+async function khJanaQRSemulaKonfirm(courseId,hari,tarikhDDMMYYYY){
+  $('kh-qr').innerHTML='<div class="card"><div class="alert ai" style="margin:0">Menjana QR baharu...</div></div>';
+  try{
+    const r=await api('janaQRCodeBaharu',{courseId,hari,tarikhKursus:tarikhDDMMYYYY});
+    if(r.success){khRenderQR(r,courseId,hari,khDDMMYYYYtoYMD(tarikhDDMMYYYY),tarikhDDMMYYYY);toast('QR Code baharu berjaya dijana.','success')}
+    else{toast(r.message||'Ralat menjana QR.','danger');khLoadQR(courseId,hari,khDDMMYYYYtoYMD(tarikhDDMMYYYY))}
+  }catch(e){toast('Ralat sistem.','danger');khLoadQR(courseId,hari,khDDMMYYYYtoYMD(tarikhDDMMYYYY))}
+}
+
+function khMuatTurunQR(qrUrl){
+  const img=new Image();
+  img.crossOrigin='anonymous';
+  img.onload=function(){
+    const canvas=document.createElement('canvas');
+    canvas.width=img.width; canvas.height=img.height;
+    canvas.getContext('2d').drawImage(img,0,0);
+    const a=document.createElement('a');
+    a.href=canvas.toDataURL('image/png');
+    a.download='QR_Kehadiran_Hari'+(khHariTerpilih?khHariTerpilih.hari:'')+'.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+  img.onerror=function(){
+    const a=document.createElement('a');
+    a.href=qrUrl; a.target='_blank';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+  img.src=qrUrl;
 }
 function pgLaporan(){
   setView(shell('Laporan','laporan',`<div class="ph"><h2>Laporan & Statistik</h2></div><div id="lapc"><div class="alert ai">Memuatkan laporan...</div></div>`));
