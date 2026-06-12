@@ -692,33 +692,185 @@ function pgLaporan(){
     }catch(e){$('lapc').innerHTML='<div class="alert ad">Ralat.</div>'}
   })();
 }
+var ST_DEFAULT_TEMPLATE =
+  '<p>Kepada,</p>'+
+  '<p><strong>[NamaPeserta]</strong><br>No. MyKad: [NoMyKad]</p>'+
+  '<p>&nbsp;</p>'+
+  '<p style="text-align:center"><strong><u>TAWARAN MENGHADIRI KURSUS</u></strong></p>'+
+  '<p>&nbsp;</p>'+
+  '<p>Dengan hormatnya, perkara di atas adalah dirujuk.</p>'+
+  '<p>2.&nbsp;&nbsp;&nbsp;Sukacita dimaklumkan bahawa pihak Institut Teknologi Unggas, Jabatan Perkhidmatan Veterinar Malaysia ingin menjemput tuan/puan untuk menghadiri program kursus seperti berikut:</p>'+
+  '<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;margin:12px 0">'+
+  '<tbody>'+
+  '<tr><td style="background:#eef2ff;font-weight:bold;width:35%">Nama Kursus</td><td>[NamaKursus]</td></tr>'+
+  '<tr><td style="background:#eef2ff;font-weight:bold">Tarikh</td><td>[TarikhMula] &ndash; [TarikhTamat]</td></tr>'+
+  '<tr><td style="background:#eef2ff;font-weight:bold">Masa Mula</td><td>[MasaMula]</td></tr>'+
+  '<tr><td style="background:#eef2ff;font-weight:bold">Tempat</td><td>[Tempat]</td></tr>'+
+  '</tbody></table>'+
+  '<p>3.&nbsp;&nbsp;&nbsp;Kehadiran tuan/puan adalah sangat diperlukan. Sila hadir tepat pada waktunya dan bawa kad pengenalan untuk tujuan pendaftaran kehadiran.</p>'+
+  '<p>4.&nbsp;&nbsp;&nbsp;Kerjasama tuan/puan dalam perkara ini amatlah dihargai.</p>'+
+  '<p>Sekian, terima kasih.</p>'+
+  '<p>&nbsp;</p><p>Yang benar,</p><p>&nbsp;</p><p>&nbsp;</p>'+
+  '<p>_______________________________________</p>'+
+  '<p><strong>PENGARAH</strong><br>Institut Teknologi Unggas<br>Jabatan Perkhidmatan Veterinar Malaysia</p>';
+
+var stKursusCache={};
+var stPesertaData=[];
+
 function pgSuratTawaran(){
   setView(shell('Surat Tawaran','surat-tawaran',`
     <div class="ph"><h2>Surat Tawaran</h2></div>
+
     <div class="card" style="margin-bottom:16px">
-      <div class="fg"><label>Pilih Kursus</label><select id="st-sel" onchange="loadSuratTawaran(this.value)"><option value="">-- Pilih Kursus --</option></select></div>
+      <h3 style="margin-bottom:12px;font-size:14px">Kop Surat</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="fg" style="margin-bottom:0"><label>No. Tel</label><input id="st-tel" value="06-383 5000"></div>
+        <div class="fg" style="margin-bottom:0"><label>No. Faks</label><input id="st-faks" value="06-383 5001"></div>
+        <div class="fg" style="margin-bottom:0"><label>Emel</label><input id="st-emel" value="itu@dvs.gov.my"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fg" style="margin-bottom:0"><label>No. Rujukan Surat</label><input id="st-rujukan" placeholder="cth: ITU/BIL.6/6/1(xx)"></div>
+        <div class="fg" style="margin-bottom:0"><label>Tarikh Surat</label><input type="date" id="st-tarikh"></div>
+      </div>
     </div>
-    <div id="stc"></div>`));
-  (async()=>{try{const r=await api('getSenaraiKursus');(r.kursus||[]).forEach(k=>{const o=document.createElement('option');o.value=k.courseId;o.textContent=k.namaKursus;$('st-sel').appendChild(o)})}catch(e){}})();
+
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin-bottom:8px;font-size:14px">Kandungan Surat</h3>
+      <div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px">
+        ${['[NamaPeserta]','[NoMyKad]','[NamaKursus]','[TarikhMula]','[TarikhTamat]','[MasaMula]','[Tempat]'].map(ph=>`<button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="stSisip('${ph}')">${ph}</button>`).join('')}
+      </div>
+      <div style="margin-bottom:8px;display:flex;gap:4px">
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('bold')"><b>B</b></button>
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('italic')"><i>I</i></button>
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('underline')"><u>U</u></button>
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('insertOrderedList')">1.</button>
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('insertUnorderedList')">&#8226;</button>
+      </div>
+      <div id="st-editor" contenteditable="true" style="border:1.5px solid var(--border);border-radius:10px;padding:16px;min-height:300px;font-family:Arial,sans-serif;font-size:11pt;line-height:1.8;background:#fff"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:12px;font-size:14px">Pilih Kursus &amp; Hantar Surat</h3>
+      <div class="fg"><label>Kursus (peserta berstatus Lulus sahaja)</label>
+        <select id="st-sel" onchange="loadSuratTawaran(this.value)"><option value="">-- Pilih Kursus --</option></select>
+      </div>
+      <div id="stc"></div>
+    </div>`));
+
+  $('st-editor').innerHTML = ST_DEFAULT_TEMPLATE;
+  var d=new Date();
+  $('st-tarikh').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+  (async()=>{
+    try{
+      const r=await api('getKursusUntukSuratTawaran');
+      (r.kursus||[]).forEach(k=>{
+        stKursusCache[k.courseId]=k;
+        const o=document.createElement('option');
+        o.value=k.courseId;
+        o.textContent=k.namaKursus+' ('+k.tarikhMula+')'+(k.jumlahLulus>0?' — '+k.jumlahLulus+' lulus':' — tiada lulus');
+        $('st-sel').appendChild(o);
+      });
+    }catch(e){}
+  })();
 }
+
+function stSisip(text){
+  var ed=$('st-editor');
+  ed.focus();
+  document.execCommand('insertText',false,text);
+}
+
 async function loadSuratTawaran(courseId){
-  if(!courseId)return;
+  if(!courseId){$('stc').innerHTML='';return}
   $('stc').innerHTML='<div class="alert ai">Memuatkan...</div>';
   try{
     const r=await api('getSenaraiTawaran',{courseId});
-    const rows=r.peserta||[];
-    $('stc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Jawatan</th><th>E-mel</th><th></th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.jawatan||'-'}</td><td>${x.email||'-'}</td>
-      <td><button class="btn btn-primary btn-sm" onclick="hantarTawaran('${x.regId}','${courseId}')">Hantar Surat</button></td></tr>`).join('')}
-    </tbody></table></div>`:'<div class="alert ai">Tiada peserta untuk kursus ini.</div>';
-  }catch(e){$('stc').innerHTML='<div class="alert ad">Ralat.</div>'}
+    stPesertaData=r.peserta||[];
+    if(!stPesertaData.length){$('stc').innerHTML='<div class="alert ai">Tiada peserta berstatus Lulus untuk kursus ini.</div>';return}
+    $('stc').innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600">Senarai Peserta Lulus</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="stPilihSemua(true)">Pilih Semua</button>
+          <button class="btn btn-secondary btn-sm" onclick="stPilihSemua(false)">Nyahpilih</button>
+        </div>
+      </div>
+      <div class="tw"><table><thead><tr>
+        <th style="width:36px"><input type="checkbox" id="st-chk-semua" onchange="stToggleSemua(this)"></th>
+        <th>Nama Peserta</th><th>No. MyKad</th><th>Jawatan / Bahagian</th><th>E-mel</th>
+      </tr></thead><tbody>
+      ${stPesertaData.map((p,i)=>`<tr>
+        <td><input type="checkbox" class="st-chk" data-idx="${i}" onchange="stKemaskiniPilihan()" checked></td>
+        <td>${p.nama}</td><td>${p.noMyKad||'-'}</td>
+        <td>${p.jawatan||'-'}<br><span style="font-size:11px;color:var(--muted)">${p.bahagian||''}</span></td>
+        <td>${p.email||'-'}</td>
+      </tr>`).join('')}
+      </tbody></table></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:10px">
+        <div style="font-size:13px;color:var(--muted)">Dipilih: <strong id="st-bil-dipilih">${stPesertaData.length}</strong> daripada <strong>${stPesertaData.length}</strong> peserta</div>
+        <button class="btn btn-success" id="st-btn-hantar" onclick="stHantar('${courseId}')">Kemaskini &amp; Hantar Surat</button>
+      </div>
+      <div id="st-results" style="margin-top:12px"></div>`;
+    $('st-chk-semua').checked=true;
+  }catch(e){$('stc').innerHTML='<div class="alert ad">Ralat memuatkan peserta.</div>'}
 }
-async function hantarTawaran(id){
-  if(!confirm('Hantar surat tawaran kepada peserta ini?'))return;
+
+function stToggleSemua(chk){
+  document.querySelectorAll('.st-chk').forEach(c=>c.checked=chk.checked);
+  stKemaskiniPilihan();
+}
+function stPilihSemua(val){
+  document.querySelectorAll('.st-chk').forEach(c=>c.checked=val);
+  const all=$('st-chk-semua'); if(all)all.checked=val;
+  stKemaskiniPilihan();
+}
+function stKemaskiniPilihan(){
+  const checks=document.querySelectorAll('.st-chk');
+  let dipilih=0; checks.forEach(c=>{if(c.checked)dipilih++});
+  const bilEl=$('st-bil-dipilih'); if(bilEl)bilEl.textContent=dipilih;
+  const all=$('st-chk-semua');
+  if(all){all.indeterminate=(dipilih>0&&dipilih<checks.length);all.checked=(dipilih===checks.length&&checks.length>0)}
+}
+
+async function stHantar(courseId){
+  if(!courseId){toast('Pilih kursus dahulu.','warning');return}
+  const templateHtml=$('st-editor').innerHTML.trim();
+  if(!templateHtml){toast('Kandungan surat tidak boleh kosong.','warning');return}
+
+  const regIds=[];
+  document.querySelectorAll('.st-chk:checked').forEach(c=>{
+    const idx=parseInt(c.dataset.idx,10);
+    if(stPesertaData[idx])regIds.push(stPesertaData[idx].regId);
+  });
+  if(!regIds.length){toast('Pilih sekurang-kurangnya seorang peserta.','warning');return}
+
+  const noRujukan=$('st-rujukan').value.trim();
+  if(!noRujukan){toast('Sila isi No. Rujukan Surat.','warning');return}
+
+  const btn=$('st-btn-hantar');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></span> Menghantar...';
   loading(true);
-  try{const r=await api('hantarSuratTawaran',{idPendaftaran:id,regId:id});toast(r.success?'Surat tawaran berjaya dihantar.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)pgSuratTawaran()}
-  catch(e){toast('Ralat.','danger')}
+
+  try{
+    const r=await api('hantarSuratTawaran',{
+      courseId, regIds, templateHtml,
+      noTel:$('st-tel').value.trim(), noFaks:$('st-faks').value.trim(),
+      emelOrg:$('st-emel').value.trim(), noRujukan,
+      tarikhSurat:$('st-tarikh').value
+    });
+    if(!r.success){toast(r.message||'Ralat menghantar.','danger');return}
+    const k=r.keputusan||[];
+    const msg=r.jumlahBerjaya+' daripada '+r.jumlah+' surat berjaya dihantar.';
+    toast(msg, r.jumlahBerjaya===r.jumlah?'success':(r.jumlahBerjaya===0?'danger':'warning'));
+    $('st-results').innerHTML=`<div class="tw"><table><thead><tr><th>Nama</th><th>Status</th><th>Maklumat</th></tr></thead><tbody>
+      ${k.map(x=>`<tr><td>${x.nama}</td><td>${x.status==='berjaya'?'<span class="badge bl">Berjaya</span>':'<span class="badge bt">Gagal</span>'}</td><td style="font-size:12px;color:var(--muted)">${x.error||''}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  }catch(e){toast('Ralat sambungan.','danger')}
   loading(false);
+  btn.disabled=false;
+  btn.innerHTML='Kemaskini &amp; Hantar Surat';
 }
 /* SUPERADMIN */
 function pgUrusPengguna(){
