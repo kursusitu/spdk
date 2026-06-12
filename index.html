@@ -186,10 +186,10 @@ function shell(title,active,body){
   ];
   const adminLinks=[
     ['admin','Panel Admin'],['admin-kursus','Urus Kursus'],
-    ['admin-pendaftaran','Urus Pendaftaran'],['kehadiran','Urus Kehadiran'],
-    ['laporan','Laporan']
+    ['admin-pendaftaran','Urus Pendaftaran'],['surat-tawaran','Surat Tawaran'],
+    ['kehadiran','Urus Kehadiran'],['maklum-balas','Penilaian Kursus']
   ];
-  const saLinks=[['surat-tawaran','Surat Tawaran'],['superadmin-pengguna','Urus Pengguna']];
+  const saLinks=[['superadmin-pengguna','Urus Pengguna'],['laporan','Laporan']];
   const links=isA?adminLinks:pesertaLinks;
   const navHtml=links.map(([k,lb])=>`<div class="ni ${active===k?'active':''}" onclick="goTo('${k}')">${lb}</div>`).join('');
   const saHtml=isSA?`<div class="nav-sec">Superadmin</div>${saLinks.map(([k,lb])=>`<div class="ni ${active===k?'active':''}" onclick="goTo('${k}')">${lb}</div>`).join('')}`:'';
