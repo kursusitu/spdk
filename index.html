@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8">
@@ -436,8 +436,26 @@ function pgSijilSaya(){
 }
 function pgMaklumBalas(){
   const isA=['admin','superadmin'].includes(S.role);
-  setView(shell('Maklum Balas','maklum-balas',`<div class="ph"><h2>Maklum Balas</h2></div><div id="mbc"><div class="alert ai">Memuatkan...</div></div>`));
-  isA?loadMBAdmin():loadMBPeserta();
+  if(isA){
+    setView(shell('Penilaian Kursus','maklum-balas',`
+      <div class="ph"><h2>Penilaian Kursus</h2><p style="color:var(--muted);font-size:13px;margin-top:4px">Urus soalan penilaian dan pantau status maklum balas peserta per-kursus.</p></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-primary btn-sm" id="mb-tab-soalan" onclick="mbAdminSwitchTab('soalan')">Urus Soalan</button>
+        <button class="btn btn-secondary btn-sm" id="mb-tab-status" onclick="mbAdminSwitchTab('status')">Status Peserta</button>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="fg" style="margin-bottom:0"><label>Pilih Kursus</label>
+          <select id="mb-admin-kursus" onchange="mbAdminOnKursusChange()"><option value="">-- Memuatkan kursus... --</option></select>
+        </div>
+      </div>
+      <div id="mb-panel-soalan"><div class="alert ai">Pilih kursus untuk urus soalan penilaian.</div></div>
+      <div id="mb-panel-status" style="display:none"><div class="alert ai">Pilih kursus untuk lihat status maklum balas peserta.</div></div>
+    `));
+    mbAdminLoadKursus();
+  }else{
+    setView(shell('Penilaian Kursus','maklum-balas',`<div class="ph"><h2>Penilaian Kursus</h2></div><div id="mbc"><div class="alert ai">Memuatkan...</div></div>`));
+    loadMBPeserta();
+  }
 }
 async function loadMBPeserta(){
   try{
@@ -524,15 +542,190 @@ async function submitMB(ids){
   }catch(e){toast('Ralat sambungan.','danger')}
   loading(false);
 }
-async function loadMBAdmin(){
-  try{
-    const r=await api('getSenaraiMaklumBalas');
-    const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
-    $('mbc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Peserta</th><th>Kursus</th><th>Tarikh</th><th>Purata</th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.namaKursus}</td><td>${x.tarikh||'-'}</td><td>${x.purata||'-'}</td></tr>`).join('')}
-    </tbody></table></div>`:'<div class="alert ai">Tiada maklum balas lagi.</div>';
-  }catch(e){$('mbc').innerHTML='<div class="alert ad">Ralat.</div>'}
+
+// ═══════════════════════════════════════════════════════════
+// P17 — Penilaian Kursus (Admin)
+// ═══════════════════════════════════════════════════════════
+var _mbAdminTabAktif='soalan';
+var _mbStatusCache=[];
+
+function mbAdminSwitchTab(tab){
+  _mbAdminTabAktif=tab;
+  ['soalan','status'].forEach(t=>{
+    const btn=$('mb-tab-'+t);
+    if(btn){
+      btn.classList.toggle('btn-primary',t===tab);
+      btn.classList.toggle('btn-secondary',t!==tab);
+    }
+    const panel=$('mb-panel-'+t);
+    if(panel)panel.style.display=(t===tab?'':'none');
+  });
+  const cid=($('mb-admin-kursus')||{}).value||'';
+  if(!cid)return;
+  if(tab==='soalan')mbAdminLoadSoalan(cid);
+  else mbAdminLoadStatus(cid);
 }
+
+async function mbAdminLoadKursus(){
+  try{
+    const r=await api('getSenaraiKursus');
+    const ks=r.kursus||[];
+    let opts='<option value="">-- Pilih kursus --</option>';
+    ks.forEach(k=>{
+      const tgl=k.tarikhMulaInput?k.tarikhMulaInput.split('-').reverse().join('/'):'';
+      opts+=`<option value="${k.courseId}">${k.namaKursus}${tgl?' ('+tgl+')':''}</option>`;
+    });
+    const sel=$('mb-admin-kursus');
+    if(sel)sel.innerHTML=opts;
+  }catch(e){toast('Ralat memuatkan senarai kursus.','danger')}
+}
+
+function mbAdminOnKursusChange(){
+  const cid=($('mb-admin-kursus')||{}).value||'';
+  if(!cid){
+    const ps=$('mb-panel-soalan');
+    if(ps)ps.innerHTML='<div class="alert ai">Pilih kursus untuk urus soalan penilaian.</div>';
+    const pt=$('mb-panel-status');
+    if(pt)pt.innerHTML='<div class="alert ai">Pilih kursus untuk lihat status maklum balas peserta.</div>';
+    return;
+  }
+  if(_mbAdminTabAktif==='soalan')mbAdminLoadSoalan(cid);
+  else mbAdminLoadStatus(cid);
+}
+
+async function mbAdminLoadSoalan(courseId){
+  const el=$('mb-panel-soalan');
+  if(!el)return;
+  el.innerHTML='<div class="alert ai">Memuatkan soalan...</div>';
+  try{
+    const r=await api('getSoalanAdmin',{courseId});
+    if(!r.success){el.innerHTML=`<div class="alert ad">${r.message||'Ralat.'}</div>`;return}
+    mbAdminRenderSoalan(r.soalan||[],courseId);
+  }catch(e){el.innerHTML='<div class="alert ad">Ralat sistem.</div>'}
+}
+
+function mbAdminRenderSoalan(soalan,courseId){
+  const el=$('mb-panel-soalan');
+  if(!el)return;
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const aktif=soalan.filter(q=>q.status==='aktif');
+  const aktifCount=aktif.length;
+  const atHad=aktifCount>=20;
+
+  const listHtml=aktif.length?aktif.map(q=>`
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <span style="min-width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${q.urutan}</span>
+      <span style="flex:1;font-size:14px">${esc(q.soalan)}</span>
+      <span class="badge ${q.jenisSoalan==='teks'?'bb':'bl'}" style="font-size:11px;flex-shrink:0">${q.jenisSoalan==='teks'?'Teks':'Rating'}</span>
+      <button class="btn btn-danger btn-sm" onclick="mbAdminPadamSoalan('${q.questionId}','${courseId}')" title="Padam soalan">🗑</button>
+    </div>`).join(''):'<div style="padding:8px 0;color:var(--muted)">Tiada soalan penilaian untuk kursus ini lagi.</div>';
+
+  const formHtml=atHad
+    ?`<div class="alert aw" style="margin-top:12px">Had maksimum 20 soalan aktif telah dicapai untuk kursus ini.</div>`
+    :`<div class="card" style="margin-top:16px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">+ Tambah Soalan</div>
+        <div class="fg">
+          <label>Teks Soalan <span id="mb-sc" style="font-weight:400;color:var(--muted)">0/200</span></label>
+          <textarea id="mb-soalan-input" rows="3" maxlength="200" placeholder="Masukkan teks soalan..." oninput="$('mb-sc').textContent=this.value.length+'/200'"></textarea>
+        </div>
+        <div class="fg" style="max-width:160px">
+          <label>Urutan</label>
+          <input type="number" id="mb-urutan-input" min="1" value="${aktifCount+1}">
+        </div>
+        <div class="fg" style="max-width:200px">
+          <label>Jenis Soalan</label>
+          <select id="mb-jenis-input">
+            <option value="rating">Rating (1-5)</option>
+            <option value="teks">Teks (komen bebas)</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="mbAdminTambahSoalan('${courseId}')">Tambah Soalan</button>
+      </div>`;
+
+  el.innerHTML=`
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:15px;font-weight:700">${aktifCount}/20 soalan aktif</span>
+      </div>
+      ${listHtml}
+    </div>
+    ${formHtml}`;
+}
+
+async function mbAdminPadamSoalan(questionId,courseId){
+  if(!confirm('Padam soalan ini? Tindakan ini tidak boleh diundur.'))return;
+  loading(true);
+  try{
+    const r=await api('padamSoalan',{questionId});
+    toast(r.success?'Soalan berjaya dipadam.':(r.message||'Gagal padam.'),r.success?'success':'danger');
+    if(r.success)mbAdminLoadSoalan(courseId);
+  }catch(e){toast('Ralat sistem.','danger')}
+  loading(false);
+}
+
+async function mbAdminTambahSoalan(courseId){
+  const soalanEl=$('mb-soalan-input');
+  const urutanEl=$('mb-urutan-input');
+  const jenisEl=$('mb-jenis-input');
+  const soalan=(soalanEl?.value||'').trim();
+  const urutan=parseInt(urutanEl?.value,10);
+  const jenisSoalan=jenisEl?.value||'rating';
+  if(!soalan){toast('Teks soalan tidak boleh kosong.','warning');return}
+  if(soalan.length>200){toast('Soalan tidak boleh melebihi 200 aksara.','warning');return}
+  if(!urutan||urutan<1){toast('Urutan mestilah nombor positif.','warning');return}
+  loading(true);
+  try{
+    const r=await api('tambahSoalan',{courseId,soalan,urutan,jenisSoalan});
+    toast(r.success?'Soalan berjaya ditambah.':(r.message||'Gagal.'),r.success?'success':'danger');
+    if(r.success)mbAdminLoadSoalan(courseId);
+  }catch(e){toast('Ralat sistem.','danger')}
+  loading(false);
+}
+
+async function mbAdminLoadStatus(courseId){
+  const el=$('mb-panel-status');
+  if(!el)return;
+  el.innerHTML='<div class="alert ai">Memuatkan status peserta...</div>';
+  try{
+    const r=await api('getStatusPesertaMaklumBalas',{courseId});
+    if(!r.success){el.innerHTML=`<div class="alert ad">${r.message||'Ralat.'}</div>`;return}
+    _mbStatusCache=r.peserta||[];
+    mbAdminRenderStatus('');
+  }catch(e){el.innerHTML='<div class="alert ad">Ralat sistem.</div>'}
+}
+
+function mbAdminRenderStatus(cari){
+  const el=$('mb-panel-status');
+  if(!el)return;
+  const q=(cari||'').toLowerCase().trim();
+  const rows=q?_mbStatusCache.filter(x=>(x.nama||'').toLowerCase().includes(q)):_mbStatusCache;
+  el.innerHTML=`
+    <div class="card" style="margin-bottom:12px">
+      <input type="text" id="mb-status-cari" placeholder="🔍 Cari nama peserta..." oninput="mbAdminFilterStatus()">
+    </div>
+    ${rows.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr>
+      <th style="width:40px">No.</th><th>Nama</th><th>Maklum Balas</th><th>Sijil</th>
+    </tr></thead><tbody>
+      ${rows.map((x,i)=>`<tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        <td>${x.nama||'-'}</td>
+        <td>${x.sudahHantar?'<span class="badge bl">✓ Sudah Hantar</span>':'<span class="badge bb">✗ Belum Hantar</span>'}</td>
+        <td>${x.adaSijil?'<span class="badge bl">✓ Ada</span>':'<span style="color:var(--muted)">—</span>'}</td>
+      </tr>`).join('')}
+    </tbody></table></div>`:'<div class="alert ai">Tiada peserta berdaftar untuk kursus ini.</div>'}`;
+  const inp=$('mb-status-cari');
+  if(inp){
+    inp.value=cari||'';
+    inp.focus();
+    inp.setSelectionRange(inp.value.length,inp.value.length);
+  }
+}
+
+function mbAdminFilterStatus(){
+  const cari=($('mb-status-cari')||{}).value||'';
+  mbAdminRenderStatus(cari);
+}
+
 function pgProfil(){
   setView(shell('Profil Saya','profil-saya',`<div class="ph"><h2>Profil Saya</h2></div><div id="profc"><div class="alert ai">Memuatkan profil...</div></div>`));
   (async()=>{
