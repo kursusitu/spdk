@@ -1497,45 +1497,220 @@ async function stHantar(courseId){
   btn.disabled=false;
   btn.innerHTML='Kemaskini &amp; Hantar Surat';
 }
-/* SUPERADMIN */
+/* SUPERADMIN — Urus Pengguna (P18) */
+var _upAllData=[];
+var _upTabAktif='semua';
+
 function pgUrusPengguna(){
   setView(shell('Urus Pengguna','superadmin-pengguna',`
-    <div class="ph"><h2>Urus Pengguna</h2></div>
-    <div class="card" style="margin-bottom:16px">
-      <select id="fj" onchange="loadPengguna()" style="max-width:200px">
-        <option value="">Semua Jawatan</option>
-        <option>Pembantu Veterinar</option><option>Pembantu Makmal</option>
-        <option>Penolong Pegawai Veterinar</option><option>Penolong Pegawai Sains</option>
-        <option>Pegawai Sains</option><option>Pegawai Veterinar</option>
-        <option>Pegawai Penyelidik</option><option>Pelatih SKM</option>
-      </select>
+    <div class="ph"><h2>Urus Pengguna</h2>
+      <p style="color:var(--muted);font-size:13px;margin-top:4px">Urus akaun, role, dan status pengguna sistem.</p>
     </div>
-    <div id="pgc"><div class="alert ai">Memuatkan...</div></div>`));
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="btn btn-primary btn-sm up-tab" data-tab="semua" onclick="upSetTab('semua')">Semua <span id="up-cnt-semua">0</span></button>
+      <button class="btn btn-secondary btn-sm up-tab" data-tab="peserta" onclick="upSetTab('peserta')">Peserta <span id="up-cnt-peserta">0</span></button>
+      <button class="btn btn-secondary btn-sm up-tab" data-tab="admin" onclick="upSetTab('admin')">Admin <span id="up-cnt-admin">0</span></button>
+      <button class="btn btn-secondary btn-sm up-tab" data-tab="superadmin" onclick="upSetTab('superadmin')">Superadmin <span id="up-cnt-superadmin">0</span></button>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:140px">
+          <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Status</label>
+          <select id="up-fs" onchange="upApplyFilter()">
+            <option value="">Semua Status</option>
+            <option value="aktif">Aktif</option>
+            <option value="nyahaktif">Nyahaktif</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:160px">
+          <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Jawatan</label>
+          <select id="up-fj" onchange="upApplyFilter()">
+            <option value="">Semua Jawatan</option>
+            <option>Pembantu Veterinar</option><option>Pembantu Makmal</option>
+            <option>Penolong Pegawai Veterinar</option><option>Penolong Pegawai Sains</option>
+            <option>Pegawai Sains</option><option>Pegawai Veterinar</option>
+            <option>Pegawai Penyelidik</option><option>Pelatih SKM</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Gred</label>
+          <select id="up-fg" onchange="upApplyFilter()">
+            <option value="">Semua Gred</option>
+          </select>
+        </div>
+        <div style="flex:0">
+          <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">&nbsp;</label>
+          <span id="up-count-label" style="font-size:13px;color:var(--muted);display:inline-block;padding:10px 4px">0 pengguna</span>
+        </div>
+      </div>
+    </div>
+    <div id="pgc"><div class="alert ai">Memuatkan...</div></div>
+  `));
   loadPengguna();
 }
+
 async function loadPengguna(){
-  const j=$('fj')?.value||'';
   $('pgc').innerHTML='<div class="alert ai">Memuatkan...</div>';
   try{
-    const r=await api('getSenaraiPengguna',{jawatan:j});
-    const rows=r.pengguna||r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
-    $('pgc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama</th><th>E-mel</th><th>Jawatan</th><th>Gred</th><th>Role</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${x.nama}</td><td>${x.email||x.emel||'-'}</td><td>${x.jawatan||'-'}</td><td>${x.gred||'-'}</td><td>${x.role}</td>
-      <td>${badge(x.status==='aktif'?'aktif':'batal')}</td>
-      <td style="display:flex;gap:4px;flex-wrap:wrap">
-        ${x.status==='aktif'?`<button class="btn btn-danger btn-sm" onclick="nyahaktifUser('${x.userId}')">Nyahaktif</button>`:`<button class="btn btn-success btn-sm" onclick="aktifkanUser('${x.userId}')">Aktifkan</button>`}
-        <button class="btn btn-secondary btn-sm" onclick="resetPWUser('${x.userId}','${x.nama.replace(/'/g,'')}')">Reset PW</button>
-      </td></tr>`).join('')}
-    </tbody></table></div>`:'<div class="alert ai">Tiada pengguna.</div>';
-  }catch(e){$('pgc').innerHTML='<div class="alert ad">Ralat.</div>'}
+    const r=await api('getSenaraiPengguna',{semua:true});
+    _upAllData=r.pengguna||r.data||[];
+    upPopulateGred();
+    upUpdateCounts();
+    upApplyFilter();
+  }catch(e){$('pgc').innerHTML='<div class="alert ad">Ralat memuatkan pengguna.</div>'}
 }
-async function nyahaktifUser(id){if(!confirm('Nyahaktifkan pengguna ini?'))return;loading(true);try{const r=await api('nyahaktifPengguna',{userId:id});toast(r.success?'Pengguna dinyahaktifkan.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPengguna()}catch(e){toast('Ralat.','danger')}loading(false)}
-async function aktifkanUser(id){loading(true);try{const r=await api('aktifkanPengguna',{userId:id});toast(r.success?'Pengguna diaktifkan.':(r.message||'Gagal.'),r.success?'success':'danger');if(r.success)loadPengguna()}catch(e){toast('Ralat.','danger')}loading(false)}
-async function resetPWUser(id,nama){
-  if(!confirm(`Reset kata laluan untuk ${nama}?`))return;
+
+function upPopulateGred(){
+  const seen={};
+  const opts=['<option value="">Semua Gred</option>'];
+  _upAllData.forEach(u=>{
+    const g=(u.gred||'').trim();
+    if(g&&!seen[g]){seen[g]=true;opts.push(`<option value="${g}">${g}</option>`)}
+  });
+  const sel=$('up-fg');
+  if(sel)sel.innerHTML=opts.join('');
+}
+
+function upUpdateCounts(){
+  const counts={semua:_upAllData.length,peserta:0,admin:0,superadmin:0};
+  _upAllData.forEach(u=>{
+    const r=(u.role||u.rol||'').toLowerCase();
+    if(counts[r]!==undefined)counts[r]++;
+  });
+  ['semua','peserta','admin','superadmin'].forEach(t=>{
+    const el=$('up-cnt-'+t);
+    if(el)el.textContent=counts[t];
+  });
+}
+
+function upSetTab(tab){
+  _upTabAktif=tab;
+  document.querySelectorAll('.up-tab').forEach(b=>{
+    const active=b.dataset.tab===tab;
+    b.classList.toggle('btn-primary',active);
+    b.classList.toggle('btn-secondary',!active);
+  });
+  upApplyFilter();
+}
+
+function upApplyFilter(){
+  const fs=($('up-fs')||{}).value||'';
+  const fj=($('up-fj')||{}).value||'';
+  const fg=($('up-fg')||{}).value||'';
+  const rows=_upAllData.filter(u=>{
+    const role=(u.role||u.rol||'').toLowerCase();
+    const status=(u.status||'').toLowerCase();
+    const matchTab=_upTabAktif==='semua'||role===_upTabAktif;
+    const matchStatus=!fs||status===fs;
+    const matchJawatan=!fj||(u.jawatan||'')===fj;
+    const matchGred=!fg||(u.gred||'').trim()===fg;
+    return matchTab&&matchStatus&&matchJawatan&&matchGred;
+  });
+  const lbl=$('up-count-label');
+  if(lbl)lbl.textContent=rows.length+' pengguna';
+  upRenderTable(rows);
+}
+
+function upRenderTable(rows){
+  if(!rows.length){
+    $('pgc').innerHTML='<div class="alert ai">Tiada pengguna sepadan dengan penapis.</div>';
+    return;
+  }
+  const roleBadge=r=>{
+    const m={peserta:'bb',admin:'ba',superadmin:'bl'};
+    return`<span class="badge ${m[r]||'bb'}" style="text-transform:capitalize">${r||'-'}</span>`;
+  };
+  $('pgc').innerHTML=`<div class="tw"><table>
+    <thead><tr>
+      <th style="width:40px">No.</th>
+      <th>Pengguna</th>
+      <th>Maklumat</th>
+      <th>Role</th>
+      <th>Status</th>
+      <th>Tindakan</th>
+    </tr></thead>
+    <tbody>
+    ${rows.map((x,i)=>{
+      const role=(x.role||x.rol||'peserta').toLowerCase();
+      const status=(x.status||'aktif').toLowerCase();
+      const aktif=status==='aktif';
+      const isSA=role==='superadmin';
+      return`<tr>
+        <td style="color:var(--muted);font-size:12px">${i+1}</td>
+        <td>
+          <div style="font-weight:600;font-size:14px">${x.nama||'-'}</div>
+          <div style="font-size:12px;color:var(--muted)">${x.email||x.emel||'-'}</div>
+        </td>
+        <td>
+          <div style="font-size:13px">${x.jawatan||'-'} · ${x.gred||'-'}</div>
+          <div style="font-size:12px;color:var(--muted)">${x.bahagianUnit||x.bahagian||'-'}</div>
+        </td>
+        <td>${roleBadge(role)}</td>
+        <td><span class="badge ${aktif?'bl':'bb'}">${aktif?'Aktif':'Nyahaktif'}</span></td>
+        <td>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${!isSA?`<button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="upTukarRole('${x.userId}','${role}','${(x.nama||'').replace(/'/g,'')}')">Tukar Role</button>`:''}
+            ${aktif
+              ?`<button class="btn btn-danger btn-sm" style="font-size:11px" onclick="nyahaktifUser('${x.userId}','${(x.nama||'').replace(/'/g,'')}')">Nyahaktif</button>`
+              :`<button class="btn btn-success btn-sm" style="font-size:11px" onclick="aktifkanUser('${x.userId}','${(x.nama||'').replace(/'/g,'')}')">Aktifkan</button>`
+            }
+            ${!isSA?`<button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="resetPWUser('${x.userId}','${(x.nama||'').replace(/'/g,'')}')">Reset KL</button>`:''}
+          </div>
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+async function upTukarRole(userId,roleSemasa,nama){
+  const roleList=['peserta','admin','superadmin'];
+  const roleBaru=roleList.filter(r=>r!==roleSemasa);
+  const pilihan=roleBaru.map((r,i)=>`${i+1}. ${r}`).join('\n');
+  const input=prompt(`Tukar role "${nama}" (semasa: ${roleSemasa})\n\nPilih role baru:\n${pilihan}\n\nTaip nombor pilihan:`);
+  if(!input)return;
+  const idx=parseInt(input)-1;
+  if(idx<0||idx>=roleBaru.length){toast('Pilihan tidak sah.','warning');return}
+  const roleBaruFinal=roleBaru[idx];
+  if(!confirm(`Tukar role ${nama} dari "${roleSemasa}" → "${roleBaruFinal}"?`))return;
   loading(true);
-  try{const r=await api('resetKataLaluanAdmin',{userId:id});toast(r.success?'Kata laluan direset. E-mel dihantar.':(r.message||'Gagal.'),r.success?'success':'danger')}
-  catch(e){toast('Ralat.','danger')}
+  try{
+    const r=await api('tukarRolePengguna',{userId,roleBaru:roleBaruFinal});
+    toast(r.success?`Role ${nama} berjaya ditukar kepada ${roleBaruFinal}.`:(r.message||'Gagal.'),r.success?'success':'danger');
+    if(r.success)loadPengguna();
+  }catch(e){toast('Ralat sistem.','danger')}
+  loading(false);
+}
+
+async function nyahaktifUser(id,nama){
+  if(!confirm(`Nyahaktifkan akaun "${nama}"?`))return;
+  loading(true);
+  try{
+    const r=await api('nyahaktifPengguna',{userId:id});
+    toast(r.success?'Pengguna berjaya dinyahaktifkan.':(r.message||'Gagal.'),r.success?'success':'danger');
+    if(r.success)loadPengguna();
+  }catch(e){toast('Ralat.','danger')}
+  loading(false);
+}
+
+async function aktifkanUser(id,nama){
+  if(!confirm(`Aktifkan semula akaun "${nama}"?`))return;
+  loading(true);
+  try{
+    const r=await api('aktifkanPengguna',{userId:id});
+    toast(r.success?'Pengguna berjaya diaktifkan.':(r.message||'Gagal.'),r.success?'success':'danger');
+    if(r.success)loadPengguna();
+  }catch(e){toast('Ralat.','danger')}
+  loading(false);
+}
+
+async function resetPWUser(id,nama){
+  if(!confirm(`Reset kata laluan untuk "${nama}"? E-mel notifikasi akan dihantar.`))return;
+  loading(true);
+  try{
+    const r=await api('resetKataLaluanAdmin',{userId:id});
+    toast(r.success?'Kata laluan direset. E-mel dihantar.':(r.message||'Gagal.'),r.success?'success':'danger');
+  }catch(e){toast('Ralat.','danger')}
   loading(false);
 }
 /* AWAM */
