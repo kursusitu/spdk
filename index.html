@@ -756,14 +756,51 @@ async function saveProfil(){
 }
 function pgTukarKL(){
   setView(shell('Tukar Kata Laluan','tukar-kata-laluan',`
-    <div class="ph"><h2>Tukar Kata Laluan</h2></div>
+    <div class="ph"><h2>Tukar Kata Laluan</h2>
+      <p style="color:var(--muted);font-size:13px;margin-top:4px">Kemaskini kata laluan akaun SPDK anda.</p>
+    </div>
     <div class="card" style="max-width:480px">
       <div id="tkla"></div>
-      <div class="fg"><label>Kata Laluan Semasa</label><input type="password" id="tkl1" placeholder="Kata laluan semasa"></div>
-      <div class="fg"><label>Kata Laluan Baru</label><input type="password" id="tkl2" placeholder="Min. 8 aksara"></div>
-      <div class="fg"><label>Sahkan Kata Laluan Baru</label><input type="password" id="tkl3" placeholder="Ulang kata laluan baru"></div>
+      <div class="fg">
+        <label>Kata Laluan Semasa</label>
+        <div style="position:relative">
+          <input type="password" id="tkl1" placeholder="Masukkan kata laluan semasa" style="padding-right:44px">
+          <span onclick="tklToggle('tkl1',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;color:var(--muted)">👁</span>
+        </div>
+      </div>
+      <div class="alert ai" style="margin-bottom:16px;font-size:13px">
+        <strong>Syarat kata laluan baharu:</strong>
+        <ul style="margin:6px 0 0 16px;line-height:1.8">
+          <li>Sekurang-kurangnya 8 aksara</li>
+          <li>Mengandungi sekurang-kurangnya 1 huruf besar (A–Z)</li>
+          <li>Mengandungi sekurang-kurangnya 1 nombor (0–9)</li>
+          <li>Mesti berbeza daripada kata laluan semasa</li>
+        </ul>
+      </div>
+      <div class="fg">
+        <label>Kata Laluan Baharu</label>
+        <div style="position:relative">
+          <input type="password" id="tkl2" placeholder="Masukkan kata laluan baharu" style="padding-right:44px">
+          <span onclick="tklToggle('tkl2',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;color:var(--muted)">👁</span>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Sahkan Kata Laluan Baharu</label>
+        <div style="position:relative">
+          <input type="password" id="tkl3" placeholder="Ulang kata laluan baharu" style="padding-right:44px">
+          <span onclick="tklToggle('tkl3',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;color:var(--muted)">👁</span>
+        </div>
+      </div>
       <button class="btn btn-primary" onclick="doTukarKL()">Tukar Kata Laluan</button>
     </div>`));
+}
+
+function tklToggle(id,el){
+  const inp=$(id);
+  if(!inp)return;
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  el.textContent=show?'🙈':'👁';
 }
 async function doTukarKL(){
   const a=$('tkl1').value,b=$('tkl2').value,c=$('tkl3').value;
