@@ -162,7 +162,9 @@ const ROUTES={
 };
 function goTo(h){window.location.hash='#'+h}
 function router(){
-  const h=window.location.hash.replace('#','')||'login';
+  const rawHash=window.location.hash.replace('#','')||'login';
+  const h=rawHash.split('?')[0];
+  window._routeParams=new URLSearchParams(rawHash.split('?')[1]||'');
   const rt=ROUTES[h];
   if(!rt){goTo('login');return}
   if(rt.pub){
@@ -429,7 +431,7 @@ function pgSijilSaya(){
         ${s.map(x=>`<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:12px">🎓</div>
         <div style="font-weight:700;margin-bottom:6px">${x.namaKursus}</div>
         <div style="font-size:13px;color:#6b7280;margin-bottom:16px">No: ${x.certId||'-'} | ${x.tarikhMula||'-'}</div>
-        ${x.certId?`<a href="#verify-cert?certId=${x.certId}" target="_blank" class="btn btn-primary btn-sm">Muat Turun</a>`:''}</div>`).join('')}
+        ${x.certId?`<a href="${location.origin}${location.pathname}#verify-cert?certId=${encodeURIComponent(x.certId)}" target="_blank" class="btn btn-primary btn-sm">Muat Turun</a>`:''}</div>`).join('')}
       </div>`:'<div class="alert ai">Tiada sijil lagi.</div>';
     }catch(e){$('sijc').innerHTML='<div class="alert ad">Ralat.</div>'}
   })();
