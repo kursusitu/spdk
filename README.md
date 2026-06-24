@@ -92,7 +92,7 @@ Repo ini berfungsi sebagai **PWA shell** untuk SPDK ITU:
 
 | Fail | Fungsi |
 |---|---|
-| `index.html` | Loading screen Clay 3D + redirect ke GAS |
+| `index.html` | PWA portal utama dengan route peserta, admin dan paparan eSijil |
 | `manifest.json` | Metadata PWA (nama, icon, warna tema) |
 | `sw.js` | Service Worker — offline fallback |
 | `offline.html` | Halaman offline Clay 3D |
@@ -100,6 +100,23 @@ Repo ini berfungsi sebagai **PWA shell** untuk SPDK ITU:
 | `icon-512.png` | Icon app 512×512 |
 
 **Warna tema:** `#1a56db` (Biru DVS)
+
+---
+
+## eSijil Peserta PWA
+
+Paparan eSijil peserta kini dikendalikan terus dalam PWA melalui route `#view-sijil?certId=...`.
+
+Flow peserta:
+1. Log masuk ke PWA.
+2. Buka menu **Sijil Saya**.
+3. Klik **Buka Sijil**.
+
+Sijil penuh dipaparkan dalam PWA sendiri dan tidak lagi redirect ke GAS `page=sijil-saya`. Data sijil diambil melalui API `getSijilSaya`, kemudian sijil dicari berdasarkan `certId`.
+
+Template sijil PWA menggunakan logic asal daripada GAS `SijilSaya.html`. Cetakan dan simpan PDF diset kepada A4 portrait. QR pengesahan sijil dipaparkan pada sijil dan membawa pengguna ke page pengesahan GAS `page=verify-cert&certId=...`.
+
+Fix ini hanya melibatkan PWA dan tidak mengubah GAS/backend.
 
 ---
 
@@ -124,6 +141,16 @@ Repo ini berfungsi sebagai **PWA shell** untuk SPDK ITU:
 |---|---|
 | [`kursusitu/spdk`](https://github.com/kursusitu/spdk) | PWA shell + short URL redirect (repo ini) |
 | `BurnDVS/spdk-V1.5` | Source code GAS (private) |
+
+---
+
+## Changelog
+
+### 2026-06-24
+
+- Tambah route paparan sijil PWA.
+- Betulkan print layout A4.
+- Betulkan QR pengesahan sijil.
 
 ---
 
