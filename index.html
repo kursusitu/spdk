@@ -458,10 +458,10 @@ function buildCertHtml(s,appUrl,user){
   var namaKursus=s.namaKursus||'';
   var tempat=s.tempat||'';
   var verifyUrl=appUrl+'?page=verify-cert&certId='+encodeURIComponent(certId);
-  var qrSrc='https://api.qrserver.com/v1/create-qr-code/?size=90x90&data='+encodeURIComponent(verifyUrl);
+  var qrSrc='https://api.qrserver.com/v1/create-qr-code/?size=130x130&data='+encodeURIComponent(verifyUrl);
   return '<div style="position:relative;width:210mm;height:297mm;background-image:url(https://i.ibb.co/bgPrvfvp/e-Certificate-Kursus.png);background-size:100% 100%;background-repeat:no-repeat;font-family:Arial,sans-serif;box-sizing:border-box;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;">'+
     '<div style="position:absolute;top:2%;left:3%;text-align:center;">'+
-    '<img src="'+qrSrc+'" alt="QR Pengesahan" width="90" height="90" style="display:block;">'+
+    '<img src="'+qrSrc+'" alt="QR Pengesahan" style="width:32mm;height:32mm;object-fit:contain;display:block;">'+
     '<p style="margin:4px 0 0;font-size:9px;color:#666;font-family:Arial,sans-serif;">Imbas untuk sahkan</p>'+
     '</div>'+
     '<div style="position:absolute;top:2%;right:3%;text-align:right;">'+
