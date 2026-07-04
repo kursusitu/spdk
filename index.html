@@ -630,6 +630,8 @@ async function submitMB(ids){
 // ═══════════════════════════════════════════════════════════
 var _mbAdminTabAktif='soalan';
 var _mbStatusCache=[];
+var _mbAdminSoalanList=[];
+var _mbEditQuestionId='';
 
 function mbAdminSwitchTab(tab){
   _mbAdminTabAktif=tab;
@@ -663,6 +665,7 @@ async function mbAdminLoadKursus(){
 }
 
 function mbAdminOnKursusChange(){
+  _mbEditQuestionId='';
   const cid=($('mb-admin-kursus')||{}).value||'';
   if(!cid){
     const ps=$('mb-panel-soalan');
@@ -690,38 +693,50 @@ function mbAdminRenderSoalan(soalan,courseId){
   const el=$('mb-panel-soalan');
   if(!el)return;
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const js=s=>String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const aktif=soalan.filter(q=>q.status==='aktif');
+  _mbAdminSoalanList=aktif;
+  const editSoalan=aktif.find(q=>q.questionId===_mbEditQuestionId);
   const aktifCount=aktif.length;
   const atHad=aktifCount>=20;
+  const isEdit=!!editSoalan;
+  const formTitle=isEdit?'Kemaskini Soalan':'+ Tambah Soalan';
+  const formSoalan=isEdit?editSoalan.soalan:'';
+  const formUrutan=isEdit?(editSoalan.urutan||1):(aktifCount+1);
+  const formJenis=isEdit?(editSoalan.jenisSoalan||'rating'):'rating';
 
   const listHtml=aktif.length?aktif.map(q=>`
     <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
       <span style="min-width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${q.urutan}</span>
       <span style="flex:1;font-size:14px">${esc(q.soalan)}</span>
       <span class="badge ${q.jenisSoalan==='teks'?'bb':'bl'}" style="font-size:11px;flex-shrink:0">${q.jenisSoalan==='teks'?'Teks':'Rating'}</span>
-      <button class="btn btn-danger btn-sm" onclick="mbAdminPadamSoalan('${q.questionId}','${courseId}')" title="Padam soalan">🗑</button>
+      <button class="btn btn-secondary btn-sm" onclick="mbAdminEditSoalan('${js(q.questionId)}','${js(courseId)}')" title="Edit soalan">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="mbAdminPadamSoalan('${js(q.questionId)}','${js(courseId)}')" title="Padam soalan">🗑</button>
     </div>`).join(''):'<div style="padding:8px 0;color:var(--muted)">Tiada soalan penilaian untuk kursus ini lagi.</div>';
 
-  const formHtml=atHad
+  const formHtml=atHad&&!isEdit
     ?`<div class="alert aw" style="margin-top:12px">Had maksimum 20 soalan aktif telah dicapai untuk kursus ini.</div>`
     :`<div class="card" style="margin-top:16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:12px">+ Tambah Soalan</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">${formTitle}</div>
         <div class="fg">
           <label>Teks Soalan <span id="mb-sc" style="font-weight:400;color:var(--muted)">0/200</span></label>
-          <textarea id="mb-soalan-input" rows="3" maxlength="200" placeholder="Masukkan teks soalan..." oninput="$('mb-sc').textContent=this.value.length+'/200'"></textarea>
+          <textarea id="mb-soalan-input" rows="3" maxlength="200" placeholder="Masukkan teks soalan..." oninput="$('mb-sc').textContent=this.value.length+'/200'">${esc(formSoalan)}</textarea>
         </div>
         <div class="fg" style="max-width:160px">
           <label>Urutan</label>
-          <input type="number" id="mb-urutan-input" min="1" value="${aktifCount+1}">
+          <input type="number" id="mb-urutan-input" min="1" max="20" value="${formUrutan}">
         </div>
         <div class="fg" style="max-width:200px">
           <label>Jenis Soalan</label>
           <select id="mb-jenis-input">
-            <option value="rating">Rating (1-5)</option>
-            <option value="teks">Teks (komen bebas)</option>
+            <option value="rating" ${formJenis==='rating'?'selected':''}>Penilaian Bintang (1-5)</option>
+            <option value="teks" ${formJenis==='teks'?'selected':''}>Jawapan Teks Bebas</option>
           </select>
         </div>
-        <button class="btn btn-primary" onclick="mbAdminTambahSoalan('${courseId}')">Tambah Soalan</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="mbAdminSimpanSoalan('${js(courseId)}')">${isEdit?'Simpan Perubahan':'Tambah Soalan'}</button>
+          ${isEdit?`<button class="btn btn-secondary" onclick="mbAdminBatalEditSoalan('${js(courseId)}')">Batal Edit</button>`:''}
+        </div>
       </div>`;
 
   el.innerHTML=`
@@ -732,6 +747,19 @@ function mbAdminRenderSoalan(soalan,courseId){
       ${listHtml}
     </div>
     ${formHtml}`;
+  if($('mb-sc'))$('mb-sc').textContent=String(formSoalan||'').length+'/200';
+}
+
+function mbAdminEditSoalan(questionId,courseId){
+  _mbEditQuestionId=questionId;
+  mbAdminRenderSoalan(_mbAdminSoalanList,courseId);
+  const form=$('mb-soalan-input');
+  if(form)form.focus();
+}
+
+function mbAdminBatalEditSoalan(courseId){
+  _mbEditQuestionId='';
+  mbAdminRenderSoalan(_mbAdminSoalanList,courseId);
 }
 
 async function mbAdminPadamSoalan(questionId,courseId){
@@ -754,12 +782,41 @@ async function mbAdminTambahSoalan(courseId){
   const jenisSoalan=jenisEl?.value||'rating';
   if(!soalan){toast('Teks soalan tidak boleh kosong.','warning');return}
   if(soalan.length>200){toast('Soalan tidak boleh melebihi 200 aksara.','warning');return}
-  if(!urutan||urutan<1){toast('Urutan mestilah nombor positif.','warning');return}
+  if(isNaN(urutan)||urutan<1||urutan>20){toast('Urutan mestilah nombor 1 hingga 20.','warning');return}
+  if(!['rating','teks'].includes(jenisSoalan)){toast('Jenis soalan tidak sah.','warning');return}
   loading(true);
   try{
     const r=await api('tambahSoalan',{courseId,soalan,urutan,jenisSoalan});
     toast(r.success?'Soalan berjaya ditambah.':(r.message||'Gagal.'),r.success?'success':'danger');
     if(r.success)mbAdminLoadSoalan(courseId);
+  }catch(e){toast('Ralat sistem.','danger')}
+  loading(false);
+}
+
+function mbAdminSimpanSoalan(courseId){
+  if(_mbEditQuestionId)return mbAdminKemaskiniSoalan(courseId);
+  return mbAdminTambahSoalan(courseId);
+}
+
+async function mbAdminKemaskiniSoalan(courseId){
+  const soalanEl=$('mb-soalan-input');
+  const urutanEl=$('mb-urutan-input');
+  const jenisEl=$('mb-jenis-input');
+  const soalan=(soalanEl?.value||'').trim();
+  const urutan=parseInt(urutanEl?.value,10);
+  const jenisSoalan=jenisEl?.value||'rating';
+  if(!soalan){toast('Teks soalan tidak boleh kosong.','warning');return}
+  if(soalan.length>200){toast('Soalan tidak boleh melebihi 200 aksara.','warning');return}
+  if(isNaN(urutan)||urutan<1||urutan>20){toast('Urutan mestilah nombor 1 hingga 20.','warning');return}
+  if(!['rating','teks'].includes(jenisSoalan)){toast('Jenis soalan tidak sah.','warning');return}
+  loading(true);
+  try{
+    const r=await api('kemaskinSoalan',{courseId,questionId:_mbEditQuestionId,soalan,urutan,jenisSoalan});
+    toast(r.success?'Soalan berjaya dikemaskini.':(r.message||'Gagal kemaskini.'),r.success?'success':'danger');
+    if(r.success){
+      _mbEditQuestionId='';
+      mbAdminLoadSoalan(courseId);
+    }
   }catch(e){toast('Ralat sistem.','danger')}
   loading(false);
 }
