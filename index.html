@@ -1060,6 +1060,7 @@ function apRenderTable(rows){
 
 var apKursusAktifCache={};
 var apPesertaBelumDaftar=[];
+var apAssignDipilih={};
 
 function apSwitchPage(page){
   $('ap-page-tab-senarai').classList.toggle('btn-primary',page==='senarai');
@@ -1077,7 +1078,8 @@ async function apLoadKursusAssign(){
     (r.kursus||[]).filter(k=>(k.status||'aktif')==='aktif').forEach(k=>{
       apKursusAktifCache[k.courseId]=k;
       const o=document.createElement('option');
-      o.value=k.courseId; o.textContent=k.namaKursus;
+      const tarikhKursus=k.tarikhMulaInput||k.tarikhMula||k.tarikh||'';
+      o.value=k.courseId; o.textContent=tarikhKursus?`${k.namaKursus} (${tarikhKursus})`:k.namaKursus;
       $('ap-assign-kursus').appendChild(o);
     });
   }catch(e){}
@@ -1091,6 +1093,7 @@ async function apLoadPesertaBelumDaftar(){
     const r=await api('getPesertaBelumDaftar',{courseId});
     if(!r.success){$('ap-assign-content').innerHTML=`<div class="alert ad">${r.message||'Ralat.'}</div>`;return}
     apPesertaBelumDaftar=r.peserta||[];
+    apAssignDipilih={};
     if(!apPesertaBelumDaftar.length){$('ap-assign-content').innerHTML='<div class="alert ai">Semua peserta aktif sudah didaftarkan untuk kursus ini.</div>';return}
     $('ap-assign-content').innerHTML=`
       <div class="card">
@@ -1101,45 +1104,128 @@ async function apLoadPesertaBelumDaftar(){
             <button class="btn btn-secondary btn-sm" onclick="apPilihSemua(false)">Nyahpilih</button>
           </div>
         </div>
-        <div class="tw"><table><thead><tr>
-          <th style="width:36px"><input type="checkbox" id="ap-chk-semua" onchange="apToggleSemua(this)"></th>
-          <th>Nama</th><th>Jawatan</th><th>Gred</th><th>Bahagian</th>
-        </tr></thead><tbody>
-        ${apPesertaBelumDaftar.map((p,i)=>`<tr>
-          <td><input type="checkbox" class="ap-chk" data-idx="${i}" onchange="apKemaskiniPilihan()"></td>
-          <td>${p.nama}</td><td>${p.jawatan||'-'}</td><td>${p.gred||'-'}</td><td>${p.bahagian||'-'}</td>
-        </tr>`).join('')}
-        </tbody></table></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <input id="ap-filter-assign-nama" type="search" placeholder="Cari Nama" oninput="apRenderPesertaBelumDaftar()" style="min-width:220px;flex:1">
+          <select id="ap-filter-assign-jawatan" onchange="apRenderPesertaBelumDaftar()" style="min-width:210px">
+            <option value="">Semua Jawatan</option>
+            ${apJawatanAssignOptions()}
+          </select>
+          <select id="ap-filter-assign-gred" onchange="apRenderPesertaBelumDaftar()" style="min-width:140px">
+            <option value="">Semua Gred</option>
+            ${apGredAssignOptions()}
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="apResetFilterAssign()">Reset</button>
+        </div>
+        <div id="ap-assign-table-wrap"></div>
         <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-          <div style="font-size:13px;color:var(--muted)">Dipilih: <strong id="ap-bil-dipilih">0</strong> daripada ${apPesertaBelumDaftar.length}</div>
+          <div style="font-size:13px;color:var(--muted)">Dipilih: <strong id="ap-bil-dipilih">0</strong> daripada <span id="ap-bil-visible">${apPesertaBelumDaftar.length}</span> dipaparkan</div>
           <button class="btn btn-primary" id="ap-btn-assign" onclick="apJalankanAssign('${courseId}')" disabled>Assign &amp; Hantar Emel</button>
         </div>
       </div>`;
+    apRenderPesertaBelumDaftar();
   }catch(e){$('ap-assign-content').innerHTML='<div class="alert ad">Ralat sistem.</div>'}
 }
 
+function apJawatanAssignOptions(){
+  return [
+    'Pembantu Veterinar',
+    'Pembantu Makmal',
+    'Penolong Pegawai Veterinar',
+    'Penolong Pegawai Sains',
+    'Pegawai Sains',
+    'Pegawai Veterinar',
+    'Pegawai Penyelidik',
+    'Pelatih SKM'
+  ].map(j=>`<option value="${j}">${j}</option>`).join('');
+}
+
+function apGredAssignOptions(){
+  const seen={};
+  apPesertaBelumDaftar.forEach(p=>{
+    const g=(p.gred||'').trim();
+    if(g)seen[g]=true;
+  });
+  return Object.keys(seen).sort((a,b)=>a.localeCompare(b,'ms',{numeric:true})).map(g=>`<option value="${g}">${g}</option>`).join('');
+}
+
+function apGetPesertaAssignVisible(){
+  const nama=(($('ap-filter-assign-nama')||{}).value||'').trim().toLowerCase();
+  const jawatan=(($('ap-filter-assign-jawatan')||{}).value||'');
+  const gred=(($('ap-filter-assign-gred')||{}).value||'');
+  return apPesertaBelumDaftar.map((p,i)=>({p,i})).filter(x=>{
+    const p=x.p;
+    const matchNama=!nama||String(p.nama||'').toLowerCase().includes(nama);
+    const matchJawatan=!jawatan||(p.jawatan||'')===jawatan;
+    const matchGred=!gred||(p.gred||'')===gred;
+    return matchNama&&matchJawatan&&matchGred;
+  });
+}
+
+function apRenderPesertaBelumDaftar(){
+  const wrap=$('ap-assign-table-wrap');
+  if(!wrap)return;
+  const rows=apGetPesertaAssignVisible();
+  const html=rows.length?`<div class="tw"><table><thead><tr>
+      <th style="width:36px"><input type="checkbox" id="ap-chk-semua" onchange="apToggleSemua(this)"></th>
+      <th>Nama</th><th>Jawatan</th><th>Gred</th><th>Bahagian</th>
+    </tr></thead><tbody>
+    ${rows.map(x=>`<tr>
+      <td><input type="checkbox" class="ap-chk" data-idx="${x.i}" onchange="apTogglePesertaAssign(this)" ${apAssignDipilih[x.i]?'checked':''}></td>
+      <td>${x.p.nama}</td><td>${x.p.jawatan||'-'}</td><td>${x.p.gred||'-'}</td><td>${x.p.bahagian||'-'}</td>
+    </tr>`).join('')}
+    </tbody></table></div>`:'<div class="alert ai">Tiada peserta sepadan dengan penapis.</div>';
+  wrap.innerHTML=html;
+  const visible=$('ap-bil-visible'); if(visible)visible.textContent=rows.length;
+  apKemaskiniPilihan();
+}
+
+function apResetFilterAssign(){
+  const nama=$('ap-filter-assign-nama'); if(nama)nama.value='';
+  const jawatan=$('ap-filter-assign-jawatan'); if(jawatan)jawatan.value='';
+  const gred=$('ap-filter-assign-gred'); if(gred)gred.value='';
+  apRenderPesertaBelumDaftar();
+}
+
+function apTogglePesertaAssign(chk){
+  const idx=parseInt(chk.dataset.idx,10);
+  if(chk.checked)apAssignDipilih[idx]=true;
+  else delete apAssignDipilih[idx];
+  apKemaskiniPilihan();
+}
+
 function apToggleSemua(chk){
-  document.querySelectorAll('.ap-chk').forEach(c=>c.checked=chk.checked);
+  document.querySelectorAll('.ap-chk').forEach(c=>{
+    c.checked=chk.checked;
+    const idx=parseInt(c.dataset.idx,10);
+    if(chk.checked)apAssignDipilih[idx]=true;
+    else delete apAssignDipilih[idx];
+  });
   apKemaskiniPilihan();
 }
 function apPilihSemua(val){
-  document.querySelectorAll('.ap-chk').forEach(c=>c.checked=val);
+  document.querySelectorAll('.ap-chk').forEach(c=>{
+    c.checked=val;
+    const idx=parseInt(c.dataset.idx,10);
+    if(val)apAssignDipilih[idx]=true;
+    else delete apAssignDipilih[idx];
+  });
   const all=$('ap-chk-semua'); if(all)all.checked=val;
   apKemaskiniPilihan();
 }
 function apKemaskiniPilihan(){
   const checks=document.querySelectorAll('.ap-chk');
-  let dipilih=0; checks.forEach(c=>{if(c.checked)dipilih++});
+  let dipilih=Object.keys(apAssignDipilih).length;
   $('ap-bil-dipilih').textContent=dipilih;
   $('ap-btn-assign').disabled=(dipilih===0);
   const all=$('ap-chk-semua');
-  if(all){all.indeterminate=(dipilih>0&&dipilih<checks.length);all.checked=(dipilih===checks.length&&checks.length>0)}
+  let dipilihVisible=0; checks.forEach(c=>{if(c.checked)dipilihVisible++});
+  if(all){all.indeterminate=(dipilihVisible>0&&dipilihVisible<checks.length);all.checked=(dipilihVisible===checks.length&&checks.length>0)}
 }
 
 async function apJalankanAssign(courseId){
   const userIds=[];
-  document.querySelectorAll('.ap-chk:checked').forEach(c=>{
-    const idx=parseInt(c.dataset.idx,10);
+  Object.keys(apAssignDipilih).forEach(k=>{
+    const idx=parseInt(k,10);
     if(apPesertaBelumDaftar[idx])userIds.push(apPesertaBelumDaftar[idx].userId);
   });
   if(!userIds.length){toast('Pilih sekurang-kurangnya seorang peserta.','warning');return}
