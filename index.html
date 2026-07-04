@@ -898,13 +898,19 @@ function pgAdminKursus(){
     <div id="kuc"><div class="alert ai">Memuatkan...</div></div>`));
   loadKursus();
 }
+var kuKursusRows=[];
 async function loadKursus(){
   try{
     const r=await api('getSenaraiKursus');
     const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
-    $('kuc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama Kursus</th><th>Tarikh Mula</th><th>Tarikh Tamat</th><th>Status</th><th></th></tr></thead><tbody>
-      ${rows.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikhMulaInput||'-'}</td><td>${k.tarikhTamatInput||'-'}</td><td>${badge(k.status||'aktif')}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.courseId}','${k.namaKursus.replace(/'/g,'')}')">Batal</button></td></tr>`).join('')}
+    kuKursusRows=rows;
+    $('kuc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama Kursus</th><th>Tarikh</th><th>Tempat</th><th>Peserta</th><th>Status</th><th></th></tr></thead><tbody>
+      ${rows.map((k,i)=>{
+        const canEdit=(k.status||'aktif')==='aktif'||k.status==='penuh';
+        const namaEsc=String(k.namaKursus||'').replace(/'/g,'');
+        return `<tr><td><div style="font-weight:600">${escHtml(k.namaKursus)}</div><div style="font-size:12px;color:var(--muted)">${escHtml(k.penerangan||'')}</div></td><td>${k.tarikhMulaInput||'-'}${k.tarikhTamatInput&&k.tarikhTamatInput!==k.tarikhMulaInput?' - '+k.tarikhTamatInput:''}<div style="font-size:12px;color:var(--muted)">${k.masaMula&&k.masaTamat?escHtml(k.masaMula+' - '+k.masaTamat):''}</div></td><td>${escHtml(k.tempat||'-')}</td><td>${k.jumlahPeserta||0}</td><td>${badge(k.status||'aktif')}</td>
+      <td><div style="display:flex;gap:6px;flex-wrap:wrap">${canEdit?`<button class="btn btn-secondary btn-sm" onclick="modalKursus(${i})">Edit</button>`:''}<button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.courseId}','${namaEsc}')">Batal</button></div></td></tr>`;
+      }).join('')}
     </tbody></table></div>`:'<div class="alert ai">Tiada kursus.</div>';
   }catch(e){$('kuc').innerHTML='<div class="alert ad">Ralat.</div>'}
 }
@@ -915,34 +921,54 @@ async function batalKursusAdmin(id,nama){
   catch(e){toast('Ralat.','danger')}
   loading(false);
 }
-function modalKursus(){
+function modalKursus(idx){
+  const editMode=Number.isInteger(idx);
+  const k=editMode?kuKursusRows[idx]:null;
+  if(editMode&&!k){toast('Kursus tidak dijumpai.','danger');return}
   const m=document.createElement('div');m.className='modal-ov';m.id='mk';
-  m.innerHTML=`<div class="modal" style="max-width:520px">
-    <div class="modal-title">Tambah Kursus Baharu</div>
+  m.innerHTML=`<div class="modal" style="max-width:620px;max-height:92vh;overflow-y:auto">
+    <div class="modal-title">${editMode?'Kemaskini Kursus':'Tambah Kursus Baharu'}</div>
     <div id="mka"></div>
     <div class="fg"><label>Nama Kursus</label><input id="mkn" placeholder="Contoh: Kursus Pengurusan Kesihatan Ternakan"></div>
     <div class="fg"><label>Penerangan</label><textarea id="mkp" rows="2" placeholder="Keterangan ringkas kursus..."></textarea></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
       <div class="fg"><label>Tarikh Mula</label><input type="date" id="mkm"></div>
       <div class="fg"><label>Tarikh Tamat</label><input type="date" id="mkt"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
       <div class="fg"><label>Tarikh Mula Pendaftaran</label><input type="date" id="mkrd"></div>
       <div class="fg"><label>Tarikh Tutup Pendaftaran</label><input type="date" id="mktd"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
       <div class="fg"><label>Masa Mula</label><input type="time" id="mkmm"></div>
       <div class="fg"><label>Masa Tamat</label><input type="time" id="mkmt"></div>
     </div>
     <div class="fg"><label>Tempat</label><input id="mkl" placeholder="Contoh: Dewan Serbaguna DVS, Putrajaya"></div>
+    ${editMode?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:12px">
+      <div class="fg"><label>Peserta Berdaftar</label><input value="${k.jumlahPeserta||0}" disabled></div>
+      <div class="fg"><label>Status</label><input value="${escHtml(k.status||'aktif')}" disabled></div>
+    </div>`:''}
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
       <button class="btn btn-secondary" onclick="document.getElementById('mk').remove()">Batal</button>
-      <button class="btn btn-primary" id="mk-btn-save" onclick="saveKursus()">Tambah Kursus</button>
+      <button class="btn btn-primary" id="mk-btn-save" onclick="saveKursus(${editMode?idx:''})">${editMode?'Simpan Perubahan':'Tambah Kursus'}</button>
     </div>
   </div>`;
   document.body.appendChild(m);
+  if(editMode){
+    $('mkn').value=k.namaKursus||'';
+    $('mkp').value=k.penerangan||'';
+    $('mkm').value=k.tarikhMulaInput||'';
+    $('mkt').value=k.tarikhTamatInput||'';
+    $('mkrd').value=k.tarikhMulaDaftarInput||'';
+    $('mktd').value=k.tarikhTutupDaftarInput||'';
+    $('mkmm').value=k.masaMula||'';
+    $('mkmt').value=k.masaTamat||'';
+    $('mkl').value=k.tempat||'';
+  }
 }
-async function saveKursus(){
+async function saveKursus(idx){
+  const editMode=Number.isInteger(idx);
+  const k=editMode?kuKursusRows[idx]:null;
   const namaKursus=$('mkn').value.trim();
   const penerangan=$('mkp').value.trim();
   const tarikhMula=$('mkm').value;
@@ -957,12 +983,14 @@ async function saveKursus(){
   const btn=$('mk-btn-save');
   btn.disabled=true; loading(true);
   try{
-    const r=await api('ciptaKursus',{
+    const payload={
       namaKursus, penerangan, tarikhMula, tarikhTamat,
       masaMula, masaTamat, tempat,
       tarikhMulaDaftar:$('mkrd').value, tarikhTutupDaftar:$('mktd').value
-    });
-    if(r.success){toast('Kursus berjaya ditambah.','success');document.getElementById('mk').remove();loadKursus()}
+    };
+    if(editMode)payload.courseId=k.courseId;
+    const r=await api(editMode?'kemaskinikursus':'ciptaKursus',payload);
+    if(r.success){toast(editMode?'Kursus berjaya dikemaskini.':'Kursus berjaya ditambah.','success');document.getElementById('mk').remove();loadKursus()}
     else $('mka').innerHTML=`<div class="alert ad">${r.message||'Gagal.'}</div>`;
   }catch(e){toast('Ralat sambungan.','danger')}
   loading(false); btn.disabled=false;
