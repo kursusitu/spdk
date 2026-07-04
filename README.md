@@ -103,6 +103,24 @@ Repo ini berfungsi sebagai **PWA shell** untuk SPDK ITU:
 
 ---
 
+## Kemas Kini Terkini
+
+### Urus Pendaftaran - Assign Peserta
+
+PWA `Urus Pendaftaran > Assign Peserta` kini telah dipadankan dengan kelakuan asas
+GAS Web App. Panel ini sudah mempunyai kawalan `Cari Nama`, `Jawatan`, `Gred` dan
+`Reset`; pilihan `Gred` dibina secara dinamik daripada senarai peserta yang dimuatkan.
+
+`Pilih Semua` dan `Nyahpilih` kini bertindak pada baris peserta yang sedang
+dipaparkan selepas tapisan digunakan. Kiraan peserta dipilih dan status butang
+`Assign` turut dikemas kini selepas perubahan tapisan atau checkbox.
+
+Dropdown kursus juga memaparkan format `NamaKursus (TarikhMula)` apabila tarikh
+wujud. Kemas kini ini hanya melibatkan frontend PWA dalam `index.html`; backend GAS,
+database, manifest, service worker, offline page dan nama action API tidak diubah.
+
+---
+
 ## eSijil Peserta PWA
 
 Paparan eSijil peserta kini dikendalikan terus dalam PWA melalui route `#view-sijil?certId=...`.
