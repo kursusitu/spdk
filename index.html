@@ -446,6 +446,15 @@ function formatTarikhPanjang(yyyymmdd){
   var bln=['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
   return parseInt(p[2],10)+' '+bln[parseInt(p[1],10)-1]+' '+p[0];
 }
+function formatTarikhPaparan(dateStr){
+  if(!dateStr)return'';
+  var s=String(dateStr).trim();
+  if(!s)return'';
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s))return s;
+  var m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return m[3]+'/'+m[2]+'/'+m[1];
+  return s;
+}
 let activeSijilHtml='';
 function buildCertHtml(s,appUrl,user){
   user=user||{};
@@ -645,7 +654,7 @@ async function mbAdminLoadKursus(){
     const ks=r.kursus||[];
     let opts='<option value="">-- Pilih kursus --</option>';
     ks.forEach(k=>{
-      const tgl=k.tarikhMulaInput?k.tarikhMulaInput.split('-').reverse().join('/'):'';
+      const tgl=formatTarikhPaparan(k.tarikhMulaInput);
       opts+=`<option value="${k.courseId}">${k.namaKursus}${tgl?' ('+tgl+')':''}</option>`;
     });
     const sel=$('mb-admin-kursus');
@@ -1107,7 +1116,7 @@ async function apLoadKursusAssign(){
       apKursusAktifCache[k.courseId]=k;
       const o=document.createElement('option');
       const tarikhKursus=k.tarikhMulaInput||k.tarikhMula||k.tarikh||'';
-      o.value=k.courseId; o.textContent=tarikhKursus?`${k.namaKursus} (${tarikhKursus})`:k.namaKursus;
+      o.value=k.courseId; o.textContent=tarikhKursus?`${k.namaKursus} (${formatTarikhPaparan(tarikhKursus)})`:k.namaKursus;
       $('ap-assign-kursus').appendChild(o);
     });
   }catch(e){}
@@ -1617,7 +1626,7 @@ function pgSuratTawaran(){
         stKursusCache[k.courseId]=k;
         const o=document.createElement('option');
         o.value=k.courseId;
-        o.textContent=k.namaKursus+' ('+k.tarikhMula+')'+(k.jumlahLulus>0?' — '+k.jumlahLulus+' lulus':' — tiada lulus');
+        o.textContent=k.namaKursus+' ('+formatTarikhPaparan(k.tarikhMula)+')'+(k.jumlahLulus>0?' — '+k.jumlahLulus+' lulus':' — tiada lulus');
         $('st-sel').appendChild(o);
       });
     }catch(e){}
