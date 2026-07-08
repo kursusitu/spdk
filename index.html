@@ -1965,7 +1965,7 @@ async function upTukarRole(userId,roleSemasa,nama){
   if(!confirm(`Tukar role ${nama} dari "${roleSemasa}" → "${roleBaruFinal}"?`))return;
   loading(true);
   try{
-    const r=await api('tukarRolePengguna',{userId,roleBaru:roleBaruFinal});
+    const r=await api('tukarRolePengguna',{userId,roleBaharu:roleBaruFinal});
     toast(r.success?`Role ${nama} berjaya ditukar kepada ${roleBaruFinal}.`:(r.message||'Gagal.'),r.success?'success':'danger');
     if(r.success)loadPengguna();
   }catch(e){toast('Ralat sistem.','danger')}
