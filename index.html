@@ -1953,16 +1953,27 @@ function upRenderTable(rows){
   </table></div>`;
 }
 
-async function upTukarRole(userId,roleSemasa,nama){
-  const roleList=['peserta','admin','superadmin'];
-  const roleBaru=roleList.filter(r=>r!==roleSemasa);
-  const pilihan=roleBaru.map((r,i)=>`${i+1}. ${r}`).join('\n');
-  const input=prompt(`Tukar role "${nama}" (semasa: ${roleSemasa})\n\nPilih role baru:\n${pilihan}\n\nTaip nombor pilihan:`);
-  if(!input)return;
-  const idx=parseInt(input)-1;
-  if(idx<0||idx>=roleBaru.length){toast('Pilihan tidak sah.','warning');return}
-  const roleBaruFinal=roleBaru[idx];
-  if(!confirm(`Tukar role ${nama} dari "${roleSemasa}" → "${roleBaruFinal}"?`))return;
+function upTukarRole(userId,roleSemasa,nama){
+  const roleList=['peserta','admin','superadmin'].filter(r=>r!==roleSemasa);
+  const m=document.createElement('div');m.className='modal-ov';m.id='mtr';
+  m.innerHTML=`<div class="modal" style="max-width:400px">
+    <div class="modal-title">Tukar Role</div>
+    <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px">Tukar role untuk <b>${nama}</b> (semasa: ${roleSemasa})</p>
+    <div class="fg"><label>Role Baharu</label>
+      <select id="mtr-role">${roleList.map(r=>`<option value="${r}">${r}</option>`).join('')}</select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="document.getElementById('mtr').remove()">Batal</button>
+      <button class="btn btn-primary" onclick="upTukarRoleConfirm('${userId}','${roleSemasa}','${nama.replace(/'/g,"\\'")}')">Tukar Role</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+async function upTukarRoleConfirm(userId,roleSemasa,nama){
+  const roleBaruFinal=$('mtr-role').value;
+  if(!roleBaruFinal)return;
+  document.getElementById('mtr').remove();
   loading(true);
   try{
     const r=await api('tukarRolePengguna',{userId,roleBaharu:roleBaruFinal});
