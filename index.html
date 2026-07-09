@@ -115,10 +115,10 @@ tr:hover td{background:#f9fafb}
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
 const L={
-  L01:'https://i.ibb.co/QvRWvqmk/1-Jata-KPKM.png',
-  L02:'https://i.ibb.co/XfcvhqxC/2-Logo-DVS.png',
-  L03:'https://i.ibb.co/4wJzqpVr/3-Logo-TVET-Malaysia.png',
-  L04:'https://i.ibb.co/zVLt1VsH/4-Malaysia-Madani.png',
+  L01:'logo-jata-kpkm.png',
+  L02:'logo-dvs.png',
+  L03:'logo-tvet.png',
+  L04:'logo-madani.png',
   L05:'https://i.ibb.co/twhChhXz/spdk.png'
 };
 let S={token:localStorage.getItem('spdk_token')||'',role:localStorage.getItem('spdk_role')||'',nama:localStorage.getItem('spdk_nama')||''};
@@ -224,7 +224,7 @@ async function doLogout(){
 /* AUTH */
 function pgLogin(){
   setView(`<div class="auth-bg"><div class="auth-card">
-    <div class="auth-logos"><img src="${L.L01}" referrerpolicy="no-referrer"><img src="${L.L02}" referrerpolicy="no-referrer"><img src="${L.L03}" referrerpolicy="no-referrer"><img src="${L.L04}" referrerpolicy="no-referrer"></div>
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"><img src="${L.L03}"><img src="${L.L04}"></div>
     <div class="auth-title">SPDK ITU</div>
     <div class="auth-subtitle">Sistem Pendigitalan Data Kursus — Institut Teknologi Unggas</div>
     <div class="dots"><span></span><span></span><span></span><span></span></div>
@@ -251,7 +251,7 @@ async function doLogin(){
 }
 function pgDaftar(){
   setView(`<div class="auth-bg"><div class="auth-card" style="max-width:520px">
-    <div class="auth-logos"><img src="${L.L01}" referrerpolicy="no-referrer"><img src="${L.L02}" referrerpolicy="no-referrer"><img src="${L.L03}" referrerpolicy="no-referrer"><img src="${L.L04}" referrerpolicy="no-referrer"></div>
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"><img src="${L.L03}"><img src="${L.L04}"></div>
     <div class="auth-title">Daftar Akaun</div>
     <div class="auth-subtitle">Buat akaun baru SPDK ITU</div>
     <div id="da"></div>
@@ -289,7 +289,7 @@ async function doDaftar(){
 }
 function pgLupa(){
   setView(`<div class="auth-bg"><div class="auth-card">
-    <div class="auth-logos"><img src="${L.L01}" referrerpolicy="no-referrer"><img src="${L.L02}" referrerpolicy="no-referrer"></div>
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"></div>
     <div class="auth-title">Lupa Kata Laluan</div>
     <div class="auth-subtitle">Masukkan e-mel untuk menerima pautan reset</div>
     <div id="lu-a"></div>
@@ -312,7 +312,7 @@ function pgReset(){
   const params=new URLSearchParams(window.location.hash.split('?')[1]||'');
   const rt=params.get('token')||'';
   setView(`<div class="auth-bg"><div class="auth-card">
-    <div class="auth-logos"><img src="${L.L01}" referrerpolicy="no-referrer"><img src="${L.L02}" referrerpolicy="no-referrer"></div>
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"></div>
     <div class="auth-title">Reset Kata Laluan</div>
     <div class="auth-subtitle">Masukkan kata laluan baru anda</div>
     <div id="re-a"></div>
@@ -2021,7 +2021,7 @@ function pgScanQR(){
   const hari=params.get('hari')||'';
   const tarikh=params.get('tarikh')||'';
   setView(`<div class="auth-bg"><div class="auth-card">
-    <div class="auth-logos"><img src="${L.L02}" referrerpolicy="no-referrer"></div>
+    <div class="auth-logos"><img src="${L.L02}"></div>
     <div class="auth-title">Imbas QR Kehadiran</div>
     <div class="auth-subtitle">${tarikh?'Hari '+hari+' — '+tarikh:'Masukkan kod QR yang diimbas'}</div>
     <div id="qra"></div>
@@ -2045,7 +2045,7 @@ function pgVerifyCert(){
   const params=new URLSearchParams(window.location.hash.split('?')[1]||'');
   const certId=params.get('certId')||'';
   setView(`<div class="auth-bg"><div class="auth-card">
-    <div class="auth-logos"><img src="${L.L01}" referrerpolicy="no-referrer"><img src="${L.L02}" referrerpolicy="no-referrer"><img src="${L.L03}" referrerpolicy="no-referrer"></div>
+    <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"><img src="${L.L03}"></div>
     <div class="auth-title">Pengesahan Sijil</div>
     <div class="auth-subtitle">Masukkan nombor sijil untuk mengesahkan kesahihannya</div>
     <div id="certa"></div>
