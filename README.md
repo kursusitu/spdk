@@ -103,6 +103,22 @@ Repo ini berfungsi sebagai **PWA shell** untuk SPDK ITU:
 
 ---
 
+## Release Frontend / PWA
+
+Setiap kali deploy versi frontend baharu:
+
+1. Update `APP_VERSION` dalam `index.html`.
+2. Update `version` dalam `version.json`.
+3. Update `CACHE_NAME` dalam `sw.js` jika ada service worker.
+4. Commit perubahan.
+5. Push ke repo `kursusitu/spdk`.
+6. Tunggu GitHub Pages deploy.
+7. Test browser normal dan mobile.
+8. Pastikan `version.json` live.
+9. Pastikan popup hanya muncul bila user masih guna versi lama.
+
+---
+
 ## Kemas Kini Terkini
 
 ### Urus Pendaftaran - Assign Peserta
