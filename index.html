@@ -513,6 +513,12 @@ function formatTarikhPaparan(dateStr){
   if(m)return m[3]+'/'+m[2]+'/'+m[1];
   return s;
 }
+function formatNoKpDisplay(value){
+  var raw=String(value||'').trim();
+  var digits=raw.replace(/\D/g,'');
+  if(digits.length===12)return digits.substr(0,6)+'-'+digits.substr(6,2)+'-'+digits.substr(8,4);
+  return raw;
+}
 let activeSijilHtml='';
 function buildCertHtml(s,appUrl,user){
   user=user||{};
@@ -520,33 +526,75 @@ function buildCertHtml(s,appUrl,user){
   var tTamat=formatTarikhPanjang(s.tarikhTamat);
   var tarikhStr=(s.tarikhMula===s.tarikhTamat)?tMula:tMula+' &ndash; '+tTamat;
   var namaUpper=String(user.nama||S.nama||'').toUpperCase();
-  var subjudul=String(user.jawatan||'')+(user.bahagian?', '+user.bahagian:'');
+  var noKpText=formatNoKpDisplay(s.noKp||s.noMyKad||s.noMykad||user.noKp||user.noMyKad||'');
   var certId=s.certId||'';
   var namaKursus=s.namaKursus||'';
   var tempat=s.tempat||'';
+  var cpdText=s.cpd&&s.cpd.text?String(s.cpd.text):'';
+  var jenisSijil=String(s.jenisSijil||'Peserta').trim()||'Peserta';
+  var isPenceramah=jenisSijil.toLowerCase()==='penceramah';
+  var jenisSumbangan=String(s.jenisSumbangan||'').trim();
+  if(!jenisSumbangan&&isPenceramah)jenisSumbangan='PENCERAMAH';
   var verifyUrl=appUrl+'?page=verify-cert&certId='+encodeURIComponent(certId);
-  var qrSrc='https://api.qrserver.com/v1/create-qr-code/?size=130x130&data='+encodeURIComponent(verifyUrl);
-  return '<div style="position:relative;width:210mm;height:297mm;background-image:url(https://i.ibb.co/bgPrvfvp/e-Certificate-Kursus.png);background-size:100% 100%;background-repeat:no-repeat;font-family:Arial,sans-serif;box-sizing:border-box;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;">'+
-    '<div style="position:absolute;top:2%;left:3%;text-align:center;">'+
-    '<img src="'+qrSrc+'" alt="QR Pengesahan" style="width:32mm;height:32mm;object-fit:contain;display:block;">'+
-    '<p style="margin:4px 0 0;font-size:9px;color:#666;font-family:Arial,sans-serif;">Imbas untuk sahkan</p>'+
-    '</div>'+
-    '<div style="position:absolute;top:2%;right:3%;text-align:right;">'+
-    '<p style="margin:0;font-size:11px;font-weight:bold;color:#333;font-family:\'Courier New\',monospace;letter-spacing:.5px;">No. Sijil: '+escHtml(certId)+'</p>'+
-    '</div>'+
-    '<div style="position:absolute;top:38%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
-    '<p style="margin:0 0 8px;font-size:13px;font-style:italic;color:#555;font-family:Arial,sans-serif;">Dengan ini mengesahkan bahawa</p>'+
+  var qrSrc='https://api.qrserver.com/v1/create-qr-code/?size=90x90&data='+encodeURIComponent(verifyUrl);
+  var titleText=isPenceramah?'SIJIL PENGHARGAAN':'SIJIL PENYERTAAN';
+  var titleBlockHtml=
+    '<div style="position:absolute;top:30%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
+    '<p style="margin:0;font-family:\'Brush Script MT\',\'Segoe Script\',cursive;font-size:42px;font-weight:700;color:#1a1a2e;letter-spacing:.5px;">'+titleText+'</p>'+
+    '</div>';
+  var namaBlockHtml=isPenceramah?(
+    '<div style="position:absolute;top:37%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
+    '<p style="margin:0 0 4px;font-size:13px;font-style:italic;line-height:1.45;color:#555;font-family:Arial,sans-serif;">Dengan sukacitanya pihak Institut Teknologi Unggas merakamkan<br>setinggi-tinggi penghargaan dan terima kasih kepada</p>'+
     '<p style="margin:0 0 6px;font-size:22px;font-weight:700;color:#1a1a2e;text-transform:uppercase;letter-spacing:1.5px;">'+escHtml(namaUpper)+'</p>'+
-    '<p style="margin:0;font-size:13px;color:#444;font-family:Arial,sans-serif;">'+escHtml(subjudul)+'</p>'+
-    '</div>'+
-    '<div style="position:absolute;top:52%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
-    '<p style="margin:0 0 8px;font-size:12px;font-style:italic;color:#555;font-family:Arial,sans-serif;">telah menyertai kursus</p>'+
+    (noKpText?'<p style="margin:0;font-size:13px;color:#444;font-family:Arial,sans-serif;">No. Kad Pengenalan: '+escHtml(noKpText)+'</p>':'')+
+    '</div>'
+  ):(
+    '<div style="position:absolute;top:38%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
+    '<p style="margin:0 0 8px;font-size:13px;font-style:italic;color:#555;font-family:Arial,sans-serif;">Dengan ini disahkan bahawa</p>'+
+    '<p style="margin:0 0 6px;font-size:22px;font-weight:700;color:#1a1a2e;text-transform:uppercase;letter-spacing:1.5px;">'+escHtml(namaUpper)+'</p>'+
+    (noKpText?'<p style="margin:0;font-size:13px;color:#444;font-family:Arial,sans-serif;">No. Kad Pengenalan: '+escHtml(noKpText)+'</p>':'')+
+    '</div>'
+  );
+  var courseBlockHtml=isPenceramah?(
+    '<div style="position:absolute;top:50%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
+    '<p style="margin:0 0 5px;font-size:12px;font-style:italic;color:#555;font-family:Arial,sans-serif;">atas sumbang bakti sebagai</p>'+
+    '<p style="margin:0 0 6px;font-size:17px;font-weight:700;color:#1a1a2e;text-transform:uppercase;letter-spacing:1px;font-family:Arial,sans-serif;">'+escHtml(jenisSumbangan)+'</p>'+
+    '<p style="margin:0 0 5px;font-size:12px;font-style:italic;color:#555;font-family:Arial,sans-serif;">bagi kursus</p>'+
     '<p style="margin:0;font-size:18px;font-weight:700;color:#1a3a6b;font-family:Arial,sans-serif;">'+escHtml(namaKursus)+'</p>'+
-    '</div>'+
+    '</div>'
+  ):(
+    '<div style="position:absolute;top:52%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
+    '<p style="margin:0 0 8px;font-size:12px;font-style:italic;color:#555;font-family:Arial,sans-serif;">telah mengikuti kursus</p>'+
+    '<p style="margin:0;font-size:18px;font-weight:700;color:#1a3a6b;font-family:Arial,sans-serif;">'+escHtml(namaKursus)+'</p>'+
+    '</div>'
+  );
+  var dateBlockHtml=isPenceramah?(
+    '<div style="position:absolute;top:64%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
+    '<p style="margin:0 0 4px;font-size:12px;font-style:italic;color:#555;font-family:Arial,sans-serif;">pada</p>'+
+    '<p style="margin:0 0 7px;font-size:13px;font-weight:700;color:#444;font-family:Arial,sans-serif;">'+tarikhStr+'</p>'+
+    (tempat&&tempat!=='-'?'<p style="margin:0 0 4px;font-size:12px;font-style:italic;color:#555;font-family:Arial,sans-serif;">bertempat di</p><p style="margin:0;font-size:13px;font-weight:700;color:#444;font-family:Arial,sans-serif;">'+escHtml(tempat)+'</p>':'')+
+    '</div>'
+  ):(
     '<div style="position:absolute;top:63%;left:0;width:100%;text-align:center;padding:0 48px;box-sizing:border-box;">'+
-    '<p style="margin:0 0 4px;font-size:13px;color:#444;font-family:Arial,sans-serif;">'+tarikhStr+'</p>'+
-    (tempat&&tempat!=='-'?'<p style="margin:0;font-size:13px;color:#444;font-family:Arial,sans-serif;">'+escHtml(tempat)+'</p>':'')+
+    '<p style="margin:0 0 4px;font-size:12px;font-style:italic;color:#555;font-family:Arial,sans-serif;">pada</p>'+
+    '<p style="margin:0 0 7px;font-size:13px;font-weight:700;color:#444;font-family:Arial,sans-serif;">'+tarikhStr+'</p>'+
+    (tempat&&tempat!=='-'?'<p style="margin:0 0 4px;font-size:12px;font-style:italic;color:#555;font-family:Arial,sans-serif;">bertempat di</p><p style="margin:0;font-size:13px;font-weight:700;color:#444;font-family:Arial,sans-serif;">'+escHtml(tempat)+'</p>':'')+
+    '</div>'
+  );
+  return '<div style="position:relative;width:210mm;height:297mm;background-image:url(https://kursusitu.github.io/spdk/assets/certificate-base.png);background-size:100% 100%;background-repeat:no-repeat;font-family:Arial,sans-serif;box-sizing:border-box;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;">'+
+    '<div style="position:absolute;top:86px;left:102px;width:70px;text-align:center;">'+
+    '<img src="'+qrSrc+'" alt="QR Pengesahan" width="70" height="70" style="display:block;width:70px;height:70px;">'+
     '</div>'+
+    '<div style="position:absolute;top:56px;right:118px;max-width:430px;text-align:right;">'+
+    '<p style="margin:0;font-size:9.5px;font-weight:bold;line-height:1.25;color:#333;font-family:\'Courier New\',monospace;letter-spacing:.5px;">No. Sijil: '+escHtml(certId)+'</p>'+
+    '</div>'+
+    (cpdText?'<div style="position:absolute;top:72px;right:118px;max-width:430px;text-align:right;">'+
+    '<p style="margin:0;font-size:7.8px;font-weight:bold;line-height:1.25;color:#333;font-family:\'Courier New\',monospace;letter-spacing:.3px;white-space:nowrap;">'+escHtml(cpdText)+'</p>'+
+    '</div>':'')+
+    titleBlockHtml+
+    namaBlockHtml+
+    courseBlockHtml+
+    dateBlockHtml+
     '</div>';
 }
 function pgViewSijil(){
