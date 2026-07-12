@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
-  "releasedAt": "2026-07-11",
-  "notes": "Sync PWA certificate renderer with participant and speaker certificate layouts."
+  "version": "1.0.2",
+  "releasedAt": "2026-07-13",
+  "notes": "Align PWA Surat Tawaran editor with GAS, remove table borders, add signatory placeholders, and fix hidden participant selection."
 }
