@@ -90,16 +90,23 @@ Portal SPDK menggunakan tema **Clay 3D** — design language yang konsisten mere
 
 Repo ini berfungsi sebagai **PWA shell** untuk SPDK ITU:
 
+**Versi semasa:** `v1.0.1`
+
 | Fail | Fungsi |
 |---|---|
 | `index.html` | PWA portal utama dengan route peserta, admin dan paparan eSijil |
 | `manifest.json` | Metadata PWA (nama, icon, warna tema) |
 | `sw.js` | Service Worker — offline fallback |
+| `version.json` | Metadata versi untuk popup kemas kini |
 | `offline.html` | Halaman offline Clay 3D |
 | `icon-192.png` | Icon app 192×192 |
 | `icon-512.png` | Icon app 512×512 |
+| `assets/certificate-base.png` | Template kosong sijil untuk renderer PWA |
 
 **Warna tema:** `#1a56db` (Biru DVS)
+
+> `assets/certificate-base.png` digunakan oleh renderer sijil PWA. Jangan rename
+> atau buang asset ini tanpa sync semula layout sijil.
 
 ---
 
@@ -109,7 +116,7 @@ Setiap kali deploy versi frontend baharu:
 
 1. Update `APP_VERSION` dalam `index.html`.
 2. Update `version` dalam `version.json`.
-3. Update `CACHE_NAME` dalam `sw.js` jika ada service worker.
+3. Update cache key dalam `sw.js`.
 4. Commit perubahan.
 5. Push ke repo `kursusitu/spdk`.
 6. Tunggu GitHub Pages deploy.
@@ -117,9 +124,38 @@ Setiap kali deploy versi frontend baharu:
 8. Pastikan `version.json` live.
 9. Pastikan popup hanya muncul bila user masih guna versi lama.
 
+Popup kemas kini membaca `version.json` dan membandingkannya dengan
+`APP_VERSION`. Jika pengguna masih berada pada cache lama, popup akan meminta
+pengguna refresh untuk mendapatkan versi PWA terkini.
+
 ---
 
 ## Kemas Kini Terkini
+
+### PWA v1.0.1 - Sync Layout Sijil
+
+PWA certificate renderer telah diselaraskan dengan layout final Apps Script
+`SijilSaya.html`. Kemas kini ini hanya melibatkan repo GitHub Pages/PWA
+`kursusitu/spdk` dan tidak mengubah backend GAS dalam source repo
+`BurnDVS/SPDK-V1.5`.
+
+Paparan sijil PWA kini menyokong:
+
+- `SIJIL PENYERTAAN` untuk `Peserta` atau sijil lama tanpa `jenisSijil`.
+- `SIJIL PENGHARGAAN` untuk `Penceramah`.
+- No. Kad Pengenalan apabila data `noKp` dibekalkan oleh API.
+- Paparan CPD optional apabila `cpd.text` wujud.
+- QR pengesahan tanpa label teks bawah QR.
+- Format tarikh/lokasi seragam: `pada`, tarikh, `bertempat di`, lokasi.
+
+Template sijil menggunakan asset:
+
+```text
+https://kursusitu.github.io/spdk/assets/certificate-base.png
+```
+
+Version frontend telah dibump ke `v1.0.1` melalui `APP_VERSION`, `version.json`,
+dan cache service worker.
 
 ### Urus Pendaftaran - Assign Peserta
 
@@ -137,9 +173,9 @@ database, manifest, service worker, offline page dan nama action API tidak diuba
 
 ---
 
-## eSijil Peserta PWA
+## eSijil PWA
 
-Paparan eSijil peserta kini dikendalikan terus dalam PWA melalui route `#view-sijil?certId=...`.
+Paparan eSijil kini dikendalikan terus dalam PWA melalui route `#view-sijil?certId=...`.
 
 Flow peserta:
 1. Log masuk ke PWA.
@@ -148,7 +184,9 @@ Flow peserta:
 
 Sijil penuh dipaparkan dalam PWA sendiri dan tidak lagi redirect ke GAS `page=sijil-saya`. Data sijil diambil melalui API `getSijilSaya`, kemudian sijil dicari berdasarkan `certId`.
 
-Template sijil PWA menggunakan logic asal daripada GAS `SijilSaya.html`. Cetakan dan simpan PDF diset kepada A4 portrait. QR pengesahan sijil dipaparkan pada sijil dan membawa pengguna ke page pengesahan GAS `page=verify-cert&certId=...`.
+Template sijil PWA telah disync dengan layout final GAS `SijilSaya.html`.
+Cetakan dan simpan PDF diset kepada A4 portrait. QR pengesahan sijil dipaparkan
+pada sijil dan membawa pengguna ke page pengesahan GAS `page=verify-cert&certId=...`.
 
 Fix ini hanya melibatkan PWA dan tidak mengubah GAS/backend.
 
@@ -165,7 +203,7 @@ Fix ini hanya melibatkan PWA dan tidak mengubah GAS/backend.
 | **Auth** | Custom session token (UUID) |
 | **QR Code** | api.qrserver.com |
 | **PWA Hosting** | GitHub Pages (`kursusitu/spdk`) |
-| **Source Code** | GitHub (`BurnDVS/spdk-V1.5`) — private |
+| **Source Code** | GitHub (`BurnDVS/SPDK-V1.5`) — private |
 
 ---
 
@@ -174,11 +212,21 @@ Fix ini hanya melibatkan PWA dan tidak mengubah GAS/backend.
 | Repo | Fungsi |
 |---|---|
 | [`kursusitu/spdk`](https://github.com/kursusitu/spdk) | PWA shell + short URL redirect (repo ini) |
-| `BurnDVS/spdk-V1.5` | Source code GAS (private) |
+| `BurnDVS/SPDK-V1.5` | Source code GAS (private) |
+
+Repo `kursusitu/spdk` ialah production GitHub Pages/PWA. Source GAS production
+dikekalkan berasingan dalam repo `BurnDVS/SPDK-V1.5`.
 
 ---
 
 ## Changelog
+
+### 2026-07-11
+
+- Tambah asset `assets/certificate-base.png`.
+- Sync renderer sijil PWA dengan layout final Apps Script `SijilSaya.html`.
+- Sokong layout `SIJIL PENYERTAAN` dan `SIJIL PENGHARGAAN`.
+- Bump PWA ke `v1.0.1`.
 
 ### 2026-06-24
 
