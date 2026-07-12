@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8">
@@ -1737,6 +1737,13 @@ var ST_DEFAULT_TEMPLATE =
 
 var stKursusCache={};
 var stPesertaData=[];
+var stStatusMap={};
+var stStatusFilter='belum_dihantar';
+var stSelectedMap={};
+var stReferenceMode='new';
+var stReferenceSelectionKey='';
+var stReferenceNewDraft={noRujukan:'',tarikhSurat:''};
+var stReferenceContext={type:'new',originalReference:'',originalDate:''};
 
 function pgSuratTawaran(){
   setView(shell('Surat Tawaran','surat-tawaran',`
@@ -1750,8 +1757,15 @@ function pgSuratTawaran(){
         <div class="fg" style="margin-bottom:0"><label>Emel</label><input id="st-emel" value="itu@dvs.gov.my"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="fg" style="margin-bottom:0"><label>No. Rujukan Surat</label><input id="st-rujukan" placeholder="cth: ITU/BIL.6/6/1(xx)"></div>
-        <div class="fg" style="margin-bottom:0"><label>Tarikh Surat</label><input type="date" id="st-tarikh"></div>
+        <div class="fg" style="margin-bottom:0"><label>No. Rujukan Surat</label><input id="st-rujukan" placeholder="cth: ITU/BIL.6/6/1(xx)" oninput="stRememberNewReference()"></div>
+        <div class="fg" style="margin-bottom:0"><label>Tarikh Surat</label><input type="date" id="st-tarikh" oninput="stRememberNewReference()"></div>
+      </div>
+      <div id="st-reference-panel" style="display:none;margin-top:12px;padding:12px;border:1px solid #c7d2fe;border-radius:10px;background:#eef2ff">
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:7px">
+          <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="st-reference-mode" id="st-reference-original" onchange="stSetReferenceMode('original')"> Guna rujukan asal</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="st-reference-mode" id="st-reference-new" onchange="stSetReferenceMode('new')"> Gunakan rujukan baharu</label>
+        </div>
+        <div id="st-reference-note" style="font-size:12px;line-height:1.5;color:#475569"></div>
       </div>
     </div>
 
@@ -1781,6 +1795,7 @@ function pgSuratTawaran(){
   $('st-editor').innerHTML = ST_DEFAULT_TEMPLATE;
   var d=new Date();
   $('st-tarikh').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  stReferenceNewDraft.tarikhSurat=$('st-tarikh').value;
 
   (async()=>{
     try{
@@ -1804,11 +1819,51 @@ function stSisip(text){
 
 async function loadSuratTawaran(courseId){
   if(!courseId){$('stc').innerHTML='';return}
+  stReferenceSelectionKey='__reset__';
   $('stc').innerHTML='<div class="alert ai">Memuatkan...</div>';
   try{
     const r=await api('getSenaraiTawaran',{courseId});
+    if(!r.success){$('stc').innerHTML='<div class="alert ad">'+escHtml(r.message||'Gagal memuatkan peserta.')+'</div>';return}
     stPesertaData=r.peserta||[];
     if(!stPesertaData.length){$('stc').innerHTML='<div class="alert ai">Tiada peserta berstatus Lulus untuk kursus ini.</div>';return}
+    const sr=await api('getStatusSuratTawaran',{courseId,regIds:stPesertaData.map(p=>p.regId)});
+    if(!sr.success){
+      $('stc').innerHTML='<div class="alert ad">'+escHtml(sr.message||'Status penghantaran tidak dapat dimuatkan.')+'</div>';
+      return;
+    }
+    stStatusMap={};
+    (sr.statuses||[]).forEach(x=>stStatusMap[x.regId]=x);
+    stStatusFilter='belum_dihantar';
+    stSelectedMap={};
+    stPesertaData.forEach(p=>stSelectedMap[p.regId]=stGetStatus(p.regId).statusCode==='belum_dihantar');
+    stRenderPeserta(courseId);
+  }catch(e){$('stc').innerHTML='<div class="alert ad">Ralat memuatkan peserta atau status penghantaran.</div>'}
+}
+
+function stGetStatus(regId){
+  return stStatusMap[regId]||{statusCode:'belum_dihantar',statusLabel:'Belum dihantar',successfulSendCount:0,failedSendCount:0};
+}
+function stStatusMatches(code){
+  if(stStatusFilter==='semua')return true;
+  if(stStatusFilter==='dihantar')return code==='dihantar'||code==='dihantar_semula';
+  return code===stStatusFilter;
+}
+function stSetStatusFilter(filter,courseId){stStatusFilter=filter;stRenderPeserta(courseId)}
+function stStatusBadge(s){
+  const bg=s.statusCode==='belum_dihantar'?'#f3f4f6':s.statusCode==='gagal'?'#fee2e2':s.statusCode==='dihantar_semula'?'#dbeafe':'#dcfce7';
+  const fg=s.statusCode==='belum_dihantar'?'#6b7280':s.statusCode==='gagal'?'#b91c1c':s.statusCode==='dihantar_semula'?'#1d4ed8':'#15803d';
+  const meta=[];
+  if(s.lastSentAt)meta.push('Terakhir: '+escHtml(s.lastSentAt));
+  if(s.lastReferenceNo)meta.push('Rujukan: '+escHtml(s.lastReferenceNo));
+  if(s.lastSentBy)meta.push('Oleh: '+escHtml(s.lastSentBy));
+  if(s.statusCode==='gagal'&&s.lastError)meta.push('Ralat: '+escHtml(s.lastError));
+  return `<span class="badge" style="background:${bg};color:${fg}">${escHtml(s.statusLabel)}</span>${meta.length?`<div style="font-size:10.5px;line-height:1.45;color:var(--muted);margin-top:4px">${meta.join('<br>')}</div>`:''}`;
+}
+function stRenderPeserta(courseId){
+    const counts={total:stPesertaData.length,belum:0,dihantar:0,gagal:0};
+    stPesertaData.forEach(p=>{const c=stGetStatus(p.regId).statusCode;if(c==='belum_dihantar')counts.belum++;else if(c==='gagal')counts.gagal++;else counts.dihantar++});
+    const visible=stPesertaData.map((p,i)=>({p,i})).filter(x=>stStatusMatches(stGetStatus(x.p.regId).statusCode));
+    const filterBtn=(key,label)=>`<button class="btn btn-sm ${stStatusFilter===key?'btn-primary':'btn-secondary'}" onclick="stSetStatusFilter('${key}','${courseId}')">${label}</button>`;
     $('stc').innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <span style="font-size:13px;font-weight:600">Senarai Peserta Lulus</span>
@@ -1817,24 +1872,27 @@ async function loadSuratTawaran(courseId){
           <button class="btn btn-secondary btn-sm" onclick="stPilihSemua(false)">Nyahpilih</button>
         </div>
       </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px">
+        ${[['Jumlah',counts.total],['Belum dihantar',counts.belum],['Dihantar',counts.dihantar],['Gagal',counts.gagal]].map(x=>`<div style="padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:11px;color:var(--muted)">${x[0]}<strong style="display:block;font-size:18px;color:var(--text)">${x[1]}</strong></div>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${filterBtn('semua','Semua')}${filterBtn('belum_dihantar','Belum dihantar')}${filterBtn('dihantar','Dihantar')}${filterBtn('gagal','Gagal')}</div>
       <div class="tw"><table><thead><tr>
         <th style="width:36px"><input type="checkbox" id="st-chk-semua" onchange="stToggleSemua(this)"></th>
-        <th>Nama Peserta</th><th>No. MyKad</th><th>Jawatan / Bahagian</th><th>E-mel</th>
+        <th>Nama Peserta</th><th>No. MyKad</th><th>Jawatan / Bahagian</th><th>E-mel</th><th>Status Surat</th>
       </tr></thead><tbody>
-      ${stPesertaData.map((p,i)=>`<tr>
-        <td><input type="checkbox" class="st-chk" data-idx="${i}" onchange="stKemaskiniPilihan()" checked></td>
-        <td>${p.nama}</td><td>${p.noMyKad||'-'}</td>
-        <td>${p.jawatan||'-'}<br><span style="font-size:11px;color:var(--muted)">${p.bahagian||''}</span></td>
-        <td>${p.email||'-'}</td>
-      </tr>`).join('')}
+      ${visible.length?visible.map(x=>{const p=x.p,s=stGetStatus(p.regId);return `<tr style="${s.successfulSendCount>0?'background:#fffbeb':''}">
+        <td><input type="checkbox" class="st-chk" data-idx="${x.i}" onchange="stKemaskiniPilihan()" ${stSelectedMap[p.regId]?'checked':''}></td>
+        <td>${escHtml(p.nama)}</td><td>${escHtml(p.noMyKad||'-')}</td>
+        <td>${escHtml(p.jawatan||'-')}<br><span style="font-size:11px;color:var(--muted)">${escHtml(p.bahagian||'')}</span></td>
+        <td>${escHtml(p.email||'-')}</td><td>${stStatusBadge(s)}</td>
+      </tr>`}).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Tiada peserta untuk status ini.</td></tr>'}
       </tbody></table></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:10px">
-        <div style="font-size:13px;color:var(--muted)">Dipilih: <strong id="st-bil-dipilih">${stPesertaData.length}</strong> daripada <strong>${stPesertaData.length}</strong> peserta</div>
+        <div style="font-size:13px;color:var(--muted)">Dipilih: <strong id="st-bil-dipilih">0</strong> daripada <strong>${stPesertaData.length}</strong> peserta</div>
         <button class="btn btn-success" id="st-btn-hantar" onclick="stHantar('${courseId}')">Kemaskini &amp; Hantar Surat</button>
       </div>
       <div id="st-results" style="margin-top:12px"></div>`;
-    $('st-chk-semua').checked=true;
-  }catch(e){$('stc').innerHTML='<div class="alert ad">Ralat memuatkan peserta.</div>'}
+    stKemaskiniPilihan();
 }
 
 function stToggleSemua(chk){
@@ -1848,10 +1906,56 @@ function stPilihSemua(val){
 }
 function stKemaskiniPilihan(){
   const checks=document.querySelectorAll('.st-chk');
-  let dipilih=0; checks.forEach(c=>{if(c.checked)dipilih++});
+  let dipilihVisible=0; checks.forEach(c=>{const p=stPesertaData[parseInt(c.dataset.idx,10)];if(p)stSelectedMap[p.regId]=c.checked;if(c.checked)dipilihVisible++});
+  const dipilih=stPesertaData.filter(p=>stSelectedMap[p.regId]).length;
   const bilEl=$('st-bil-dipilih'); if(bilEl)bilEl.textContent=dipilih;
   const all=$('st-chk-semua');
-  if(all){all.indeterminate=(dipilih>0&&dipilih<checks.length);all.checked=(dipilih===checks.length&&checks.length>0)}
+  if(all){all.indeterminate=(dipilihVisible>0&&dipilihVisible<checks.length);all.checked=(dipilihVisible===checks.length&&checks.length>0)}
+  stUpdateReferenceMode();
+}
+
+function stRememberNewReference(){
+  if(stReferenceMode!=='new')return;
+  stReferenceNewDraft.noRujukan=$('st-rujukan').value;
+  stReferenceNewDraft.tarikhSurat=$('st-tarikh').value;
+}
+function stDateInputFromStatus(value){
+  const raw=String(value||'').trim(),iso=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(iso)return raw;
+  const numeric=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(numeric)return numeric[3]+'-'+String(numeric[2]).padStart(2,'0')+'-'+String(numeric[1]).padStart(2,'0');
+  const bm=raw.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);if(!bm)return '';
+  const months={januari:1,februari:2,mac:3,april:4,mei:5,jun:6,julai:7,ogos:8,september:9,oktober:10,november:11,disember:12},month=months[bm[2].toLowerCase()];
+  return month?bm[3]+'-'+String(month).padStart(2,'0')+'-'+String(bm[1]).padStart(2,'0'):'';
+}
+function stSetReferenceMode(mode){
+  const original=$('st-reference-original');
+  if(mode==='original'&&original.disabled)return;
+  if(stReferenceMode==='new')stRememberNewReference();
+  stReferenceMode=mode;
+  original.checked=mode==='original';$('st-reference-new').checked=mode==='new';
+  if(mode==='original'){
+    $('st-rujukan').value=stReferenceContext.originalReference;$('st-tarikh').value=stReferenceContext.originalDate;
+    $('st-rujukan').readOnly=true;$('st-tarikh').readOnly=true;
+    $('st-reference-note').innerHTML='Menggunakan rujukan asal: <strong>'+escHtml(stReferenceContext.originalReference)+'</strong><br>Tarikh surat asal: <strong>'+escHtml(formatTarikhPaparan(stReferenceContext.originalDate))+'</strong>';
+  }else{
+    $('st-rujukan').value=stReferenceNewDraft.noRujukan;$('st-tarikh').value=stReferenceNewDraft.tarikhSurat;
+    $('st-rujukan').readOnly=false;$('st-tarikh').readOnly=false;
+    if(stReferenceContext.type==='resend')$('st-reference-note').textContent='Masukkan rujukan dan tarikh surat baharu untuk penghantaran semula ini.';
+  }
+}
+function stUpdateReferenceMode(){
+  const selected=stPesertaData.filter(p=>stSelectedMap[p.regId]);
+  const key=selected.map(p=>p.regId).sort().join('|');if(key===stReferenceSelectionKey)return;stReferenceSelectionKey=key;
+  const panel=$('st-reference-panel'),note=$('st-reference-note'),original=$('st-reference-original');
+  const sent=selected.filter(p=>stGetStatus(p.regId).successfulSendCount>0),unsent=selected.length-sent.length;
+  stReferenceContext={type:'new',originalReference:'',originalDate:''};
+  if(!selected.length||!sent.length){panel.style.display='none';original.disabled=true;stSetReferenceMode('new');return}
+  panel.style.display='block';
+  if(unsent>0){stReferenceContext.type='mixed';original.disabled=true;note.style.color='#b45309';note.textContent='Batch ini mengandungi peserta baharu dan peserta yang pernah menerima surat. Sila gunakan satu rujukan baharu untuk semua surat.';stSetReferenceMode('new');return}
+  const refs={},dates=[];let missing=false;
+  sent.forEach(p=>{const s=stGetStatus(p.regId),ref=String(s.lastReferenceNo||'').trim(),date=stDateInputFromStatus(s.lastLetterDate);if(!ref||!date)missing=true;if(ref)refs[ref]=true;if(date)dates.push(date)});
+  const list=Object.keys(refs);
+  if(missing||list.length!==1){original.disabled=true;note.style.color='#b45309';note.textContent=missing?'Maklumat rujukan atau tarikh asal tidak lengkap. Sila gunakan rujukan baharu.':'Peserta terpilih mempunyai rujukan asal yang berbeza. Sila gunakan rujukan baharu.';stSetReferenceMode('new');return}
+  note.style.color='#475569';stReferenceContext={type:'resend',originalReference:list[0],originalDate:dates[0]};original.disabled=false;stSetReferenceMode('original');
 }
 
 async function stHantar(courseId){
@@ -1860,14 +1964,13 @@ async function stHantar(courseId){
   if(!templateHtml){toast('Kandungan surat tidak boleh kosong.','warning');return}
 
   const regIds=[];
-  document.querySelectorAll('.st-chk:checked').forEach(c=>{
-    const idx=parseInt(c.dataset.idx,10);
-    if(stPesertaData[idx])regIds.push(stPesertaData[idx].regId);
-  });
+  stPesertaData.forEach(p=>{if(stSelectedMap[p.regId])regIds.push(p.regId)});
   if(!regIds.length){toast('Pilih sekurang-kurangnya seorang peserta.','warning');return}
 
   const noRujukan=$('st-rujukan').value.trim();
   if(!noRujukan){toast('Sila isi No. Rujukan Surat.','warning');return}
+  const tarikhSurat=$('st-tarikh').value;
+  if(!tarikhSurat){toast('Sila pilih Tarikh Surat.','warning');return}
 
   const btn=$('st-btn-hantar');
   btn.disabled=true;
@@ -1879,7 +1982,7 @@ async function stHantar(courseId){
       courseId, regIds, templateHtml,
       noTel:$('st-tel').value.trim(), noFaks:$('st-faks').value.trim(),
       emelOrg:$('st-emel').value.trim(), noRujukan,
-      tarikhSurat:$('st-tarikh').value
+      tarikhSurat
     });
     if(!r.success){toast(r.message||'Ralat menghantar.','danger');return}
     const k=r.keputusan||[];
@@ -1888,10 +1991,18 @@ async function stHantar(courseId){
     $('st-results').innerHTML=`<div class="tw"><table><thead><tr><th>Nama</th><th>Status</th><th>Maklumat</th></tr></thead><tbody>
       ${k.map(x=>`<tr><td>${x.nama}</td><td>${x.status==='berjaya'?'<span class="badge bl">Berjaya</span>':'<span class="badge bt">Gagal</span>'}</td><td style="font-size:12px;color:var(--muted)">${x.error||''}</td></tr>`).join('')}
     </tbody></table></div>`;
+    await stRefreshStatus(courseId,regIds);
   }catch(e){toast('Ralat sambungan.','danger')}
   loading(false);
   btn.disabled=false;
   btn.innerHTML='Kemaskini &amp; Hantar Surat';
+}
+async function stRefreshStatus(courseId,sentRegIds){
+  const sr=await api('getStatusSuratTawaran',{courseId,regIds:stPesertaData.map(p=>p.regId)});
+  if(!sr.success){toast(sr.message||'Status penghantaran tidak dapat dikemas kini.','warning');return}
+  stStatusMap={};(sr.statuses||[]).forEach(x=>stStatusMap[x.regId]=x);
+  (sentRegIds||[]).forEach(id=>stSelectedMap[id]=false);
+  stRenderPeserta(courseId);
 }
 /* SUPERADMIN — Urus Pengguna (P18) */
 var _upAllData=[];
