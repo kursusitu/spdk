@@ -115,6 +115,10 @@ tr:hover td{background:#f9fafb}
   .update-card{left:16px;right:16px;bottom:16px;width:auto}
   .update-actions .btn{flex:1}
 }
+
+#st-editor table{border:none!important;border-collapse:collapse!important;width:100%!important;margin:12px 0!important}
+#st-editor tr{border:none!important}
+#st-editor td,#st-editor th{border:none!important;background:#fff!important;padding:6px!important}
 </style>
 </head>
 <body>
@@ -1717,23 +1721,24 @@ var ST_DEFAULT_TEMPLATE =
   '<p>Kepada,</p>'+
   '<p><strong>[NamaPeserta]</strong><br>No. MyKad: [NoMyKad]</p>'+
   '<p>&nbsp;</p>'+
-  '<p style="text-align:center"><strong><u>TAWARAN MENGHADIRI KURSUS</u></strong></p>'+
+  '<p style="text-align:center;"><strong><u>TAWARAN MENGHADIRI KURSUS</u></strong></p>'+
   '<p>&nbsp;</p>'+
   '<p>Dengan hormatnya, perkara di atas adalah dirujuk.</p>'+
   '<p>2.&nbsp;&nbsp;&nbsp;Sukacita dimaklumkan bahawa pihak Institut Teknologi Unggas, Jabatan Perkhidmatan Veterinar Malaysia ingin menjemput tuan/puan untuk menghadiri program kursus seperti berikut:</p>'+
-  '<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;margin:12px 0">'+
+  '<table cellpadding="0" cellspacing="0" style="width:100%;border:none;border-collapse:collapse;margin:12px 0;">'+
   '<tbody>'+
-  '<tr><td style="background:#eef2ff;font-weight:bold;width:35%">Nama Kursus</td><td>[NamaKursus]</td></tr>'+
-  '<tr><td style="background:#eef2ff;font-weight:bold">Tarikh</td><td>[TarikhMula] &ndash; [TarikhTamat]</td></tr>'+
-  '<tr><td style="background:#eef2ff;font-weight:bold">Masa Mula</td><td>[MasaMula]</td></tr>'+
-  '<tr><td style="background:#eef2ff;font-weight:bold">Tempat</td><td>[Tempat]</td></tr>'+
+  '<tr style="border:none;"><td style="background:#fff;border:none;padding:6px;font-weight:bold;width:35%;">Nama Kursus</td><td style="background:#fff;border:none;padding:6px;">[NamaKursus]</td></tr>'+
+  '<tr style="border:none;"><td style="background:#fff;border:none;padding:6px;font-weight:bold;">Tarikh</td><td style="background:#fff;border:none;padding:6px;">[TarikhMula] &ndash; [TarikhTamat]</td></tr>'+
+  '<tr style="border:none;"><td style="background:#fff;border:none;padding:6px;font-weight:bold;">Masa Mula</td><td style="background:#fff;border:none;padding:6px;">[MasaMula]</td></tr>'+
+  '<tr style="border:none;"><td style="background:#fff;border:none;padding:6px;font-weight:bold;">Tempat</td><td style="background:#fff;border:none;padding:6px;">[Tempat]</td></tr>'+
   '</tbody></table>'+
   '<p>3.&nbsp;&nbsp;&nbsp;Kehadiran tuan/puan adalah sangat diperlukan. Sila hadir tepat pada waktunya dan bawa kad pengenalan untuk tujuan pendaftaran kehadiran.</p>'+
   '<p>4.&nbsp;&nbsp;&nbsp;Kerjasama tuan/puan dalam perkara ini amatlah dihargai.</p>'+
   '<p>Sekian, terima kasih.</p>'+
-  '<p>&nbsp;</p><p>Yang benar,</p><p>&nbsp;</p><p>&nbsp;</p>'+
-  '<p>_______________________________________</p>'+
-  '<p><strong>PENGARAH</strong><br>Institut Teknologi Unggas<br>Jabatan Perkhidmatan Veterinar Malaysia</p>';
+  '<p>&nbsp;</p>'+
+  '<p>Yang benar,</p>'+
+  '<div>[Tandatangan]</div>'+
+  '<p><strong>[NamaPenandatangan]</strong><br>[JawatanPenandatangan]<br>Institut Teknologi Unggas<br>Jabatan Perkhidmatan Veterinar Malaysia</p>';
 
 var stKursusCache={};
 var stPesertaData=[];
@@ -1771,17 +1776,24 @@ function pgSuratTawaran(){
 
     <div class="card" style="margin-bottom:16px">
       <h3 style="margin-bottom:8px;font-size:14px">Kandungan Surat</h3>
-      <div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px">
-        ${['[NamaPeserta]','[NoMyKad]','[NamaKursus]','[TarikhMula]','[TarikhTamat]','[MasaMula]','[Tempat]'].map(ph=>`<button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="stSisip('${ph}')">${ph}</button>`).join('')}
+      <div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-right:2px">Sisip:</span>
+        ${['[NamaPeserta]','[NoMyKad]','[NamaKursus]','[TarikhMula]','[TarikhTamat]','[MasaMula]','[Tempat]','[Tandatangan]','[NamaPenandatangan]','[JawatanPenandatangan]'].map(ph=>`<button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="stSisip('${ph}')">${ph}</button>`).join('')}
       </div>
-      <div style="margin-bottom:8px;display:flex;gap:4px">
-        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('bold')"><b>B</b></button>
-        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('italic')"><i>I</i></button>
-        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('underline')"><u>U</u></button>
-        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('insertOrderedList')">1.</button>
-        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="document.execCommand('insertUnorderedList')">&#8226;</button>
+      <div style="margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap">
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="stFormat('bold')"><b>B</b></button>
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="stFormat('italic')"><i>I</i></button>
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="stFormat('underline')"><u>U</u></button>
+        <span style="width:1px;background:var(--border);margin:0 2px"></span>
+        <button type="button" class="btn btn-secondary btn-sm" title="Jajar kiri" onmousedown="event.preventDefault()" onclick="stFormat('justifyLeft')">&#8676;</button>
+        <button type="button" class="btn btn-secondary btn-sm" title="Jajar tengah" onmousedown="event.preventDefault()" onclick="stFormat('justifyCenter')">&#8660;</button>
+        <button type="button" class="btn btn-secondary btn-sm" title="Jajar kanan" onmousedown="event.preventDefault()" onclick="stFormat('justifyRight')">&#8677;</button>
+        <span style="width:1px;background:var(--border);margin:0 2px"></span>
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="stFormat('insertOrderedList')">1.</button>
+        <button type="button" class="btn btn-secondary btn-sm" onmousedown="event.preventDefault()" onclick="stFormat('insertUnorderedList')">&#8226;</button>
+        <button type="button" class="btn btn-secondary btn-sm" title="Padam format" onmousedown="event.preventDefault()" onclick="stFormat('removeFormat')">Tx</button>
       </div>
-      <div id="st-editor" contenteditable="true" style="border:1.5px solid var(--border);border-radius:10px;padding:16px;min-height:300px;font-family:Arial,sans-serif;font-size:11pt;line-height:1.8;background:#fff"></div>
+      <div id="st-editor" contenteditable="true" spellcheck="false" style="border:1.5px solid var(--border);border-radius:10px;padding:20px 24px;min-height:320px;font-family:Arial,sans-serif;font-size:11pt;line-height:1.8;background:#fff;outline:none;overflow-y:auto"></div>
     </div>
 
     <div class="card">
@@ -1811,6 +1823,12 @@ function pgSuratTawaran(){
   })();
 }
 
+function stFormat(cmd){
+  var ed=$('st-editor');
+  ed.focus();
+  document.execCommand(cmd,false,null);
+}
+
 function stSisip(text){
   var ed=$('st-editor');
   ed.focus();
@@ -1835,7 +1853,7 @@ async function loadSuratTawaran(courseId){
     (sr.statuses||[]).forEach(x=>stStatusMap[x.regId]=x);
     stStatusFilter='belum_dihantar';
     stSelectedMap={};
-    stPesertaData.forEach(p=>stSelectedMap[p.regId]=stGetStatus(p.regId).statusCode==='belum_dihantar');
+    stPesertaData.forEach(p=>stSelectedMap[p.regId]=false);
     stRenderPeserta(courseId);
   }catch(e){$('stc').innerHTML='<div class="alert ad">Ralat memuatkan peserta atau status penghantaran.</div>'}
 }
@@ -1848,7 +1866,14 @@ function stStatusMatches(code){
   if(stStatusFilter==='dihantar')return code==='dihantar'||code==='dihantar_semula';
   return code===stStatusFilter;
 }
-function stSetStatusFilter(filter,courseId){stStatusFilter=filter;stRenderPeserta(courseId)}
+function stSetStatusFilter(filter,courseId){
+  const hadSelection=stPesertaData.some(p=>stSelectedMap[p.regId]);
+  stPesertaData.forEach(p=>stSelectedMap[p.regId]=false);
+  stStatusFilter=filter;
+  stReferenceSelectionKey='__filter_reset__';
+  stRenderPeserta(courseId);
+  if(hadSelection)toast('Pilihan peserta dikosongkan selepas tukar penapis.','info');
+}
 function stStatusBadge(s){
   const bg=s.statusCode==='belum_dihantar'?'#f3f4f6':s.statusCode==='gagal'?'#fee2e2':s.statusCode==='dihantar_semula'?'#dbeafe':'#dcfce7';
   const fg=s.statusCode==='belum_dihantar'?'#6b7280':s.statusCode==='gagal'?'#b91c1c':s.statusCode==='dihantar_semula'?'#1d4ed8':'#15803d';
@@ -1900,7 +1925,14 @@ function stToggleSemua(chk){
   stKemaskiniPilihan();
 }
 function stPilihSemua(val){
-  document.querySelectorAll('.st-chk').forEach(c=>c.checked=val);
+  if(!val){
+    stPesertaData.forEach(p=>stSelectedMap[p.regId]=false);
+  }
+  document.querySelectorAll('.st-chk').forEach(c=>{
+    c.checked=val;
+    const p=stPesertaData[parseInt(c.dataset.idx,10)];
+    if(p)stSelectedMap[p.regId]=val;
+  });
   const all=$('st-chk-semua'); if(all)all.checked=val;
   stKemaskiniPilihan();
 }
@@ -1982,7 +2014,8 @@ async function stHantar(courseId){
       courseId, regIds, templateHtml,
       noTel:$('st-tel').value.trim(), noFaks:$('st-faks').value.trim(),
       emelOrg:$('st-emel').value.trim(), noRujukan,
-      tarikhSurat
+      tarikhSurat,
+      includeLampiranA:true
     });
     if(!r.success){toast(r.message||'Ralat menghantar.','danger');return}
     const k=r.keputusan||[];
