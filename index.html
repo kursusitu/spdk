@@ -127,7 +127,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.3';
+const APP_VERSION='1.0.4';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -136,9 +136,54 @@ const L={
   L05:'./logo-spdk.png'
 };
 let S={token:localStorage.getItem('spdk_token')||'',role:localStorage.getItem('spdk_role')||'',nama:localStorage.getItem('spdk_nama')||''};
+const PENDING_ATTENDANCE_KEY='spdk_pending_attendance';
+const ATTENDANCE_AUTO_KEY='spdk_pending_attendance_auto';
 let updateWorker=null;
 function saveAuth(t,r,n){S.token=t;S.role=r;S.nama=n;localStorage.setItem('spdk_token',t);localStorage.setItem('spdk_role',r);localStorage.setItem('spdk_nama',n)}
 function clearAuth(){S={token:'',role:'',nama:''};['spdk_token','spdk_role','spdk_nama'].forEach(k=>localStorage.removeItem(k))}
+function normalizeAttendanceCode(value){return String(value||'').trim().toUpperCase()}
+function getPendingAttendance(){
+  try{
+    const raw=sessionStorage.getItem(PENDING_ATTENDANCE_KEY);
+    if(!raw)return null;
+    const data=JSON.parse(raw);
+    const shortCode=normalizeAttendanceCode(data.shortCode);
+    if(!shortCode)return null;
+    return{shortCode,via:data.via==='qr'?'qr':''};
+  }catch(e){sessionStorage.removeItem(PENDING_ATTENDANCE_KEY);return null}
+}
+function savePendingAttendance(shortCode,via){
+  const next={shortCode:normalizeAttendanceCode(shortCode),via:via==='qr'?'qr':''};
+  if(!next.shortCode)return null;
+  const current=getPendingAttendance();
+  if(!current||current.shortCode!==next.shortCode||current.via!==next.via){
+    sessionStorage.removeItem(ATTENDANCE_AUTO_KEY);
+  }
+  sessionStorage.setItem(PENDING_ATTENDANCE_KEY,JSON.stringify(next));
+  return next;
+}
+function clearPendingAttendance(){
+  sessionStorage.removeItem(PENDING_ATTENDANCE_KEY);
+  sessionStorage.removeItem(ATTENDANCE_AUTO_KEY);
+}
+function completePendingAttendance(){
+  clearPendingAttendance();
+  if(window.location.hash.indexOf('#scan-qr')===0){
+    window.history.replaceState(null,'',window.location.pathname+'#scan-qr');
+  }
+}
+function attendanceRoute(data){
+  if(!data||!data.shortCode)return'#scan-qr';
+  return'#scan-qr?hadir='+encodeURIComponent(data.shortCode)+(data.via==='qr'?'&via=qr':'');
+}
+function bootstrapAttendanceQuery(){
+  const query=new URLSearchParams(window.location.search);
+  if(!query.has('hadir'))return;
+  const pending=savePendingAttendance(query.get('hadir'),query.get('via')==='qr'?'qr':'');
+  const cleanUrl=window.location.pathname+(pending?attendanceRoute(pending):'#scan-qr');
+  window.history.replaceState(null,'',cleanUrl);
+}
+bootstrapAttendanceQuery();
 async function api(action,params={}){
   const body={action,...params};
   if(S.token)body.token=S.token;
@@ -224,7 +269,11 @@ function router(){
   const rt=ROUTES[h];
   if(!rt){goTo('login');return}
   if(rt.pub){
-    if(S.token&&(h==='login'||h==='daftar')){goTo(S.role==='peserta'?'dashboard':'admin');return}
+    if(S.token&&(h==='login'||h==='daftar')){
+      const pending=getPendingAttendance();
+      goTo(S.role==='peserta'&&pending?attendanceRoute(pending).slice(1):(S.role==='peserta'?'dashboard':'admin'));
+      return;
+    }
     rt.r(h);return;
   }
   if(!S.token){goTo('login');return}
@@ -304,7 +353,11 @@ async function doLogin(){
   $('bl').disabled=true;loading(true);
   try{
     const r=await api('login',{email:e,password:p});
-    if(r.success){saveAuth(r.token,r.role,r.nama);toast('Selamat datang, '+r.nama+'!','success');goTo(r.role==='peserta'?'dashboard':'admin')}
+    if(r.success){
+      saveAuth(r.token,r.role,r.nama);toast('Selamat datang, '+r.nama+'!','success');
+      const pending=getPendingAttendance();
+      goTo(r.role==='peserta'&&pending?attendanceRoute(pending).slice(1):(r.role==='peserta'?'dashboard':'admin'));
+    }
     else $('la').innerHTML=`<div class="alert ad">${r.message||'Log masuk gagal.'}</div>`;
   }catch(err){$('la').innerHTML='<div class="alert ad">Ralat sambungan. Cuba lagi.</div>'}
   loading(false);const b=$('bl');if(b)b.disabled=false;
@@ -1454,6 +1507,7 @@ async function tolakPend(id){
 var khKursusData=[];
 var khPesertaData=[];
 var khHariTerpilih=null;
+var khQrActionState=null;
 
 function pgKehadiran(){
   setView(shell('Urus Kehadiran','kehadiran',`
@@ -1626,36 +1680,113 @@ async function khLoadQR(courseId,hari,tarikhYMD){
 function khRenderQR(r,courseId,hari,tarikhYMD,tarikhDDMMYYYY){
   const tarikhPapar=formatTarikhKH(tarikhYMD);
   const label=`Hari ${hari} — ${tarikhPapar}`;
-  if(!r||!r.success||!r.exists){
+  khQrActionState={courseId,hari,tarikhYMD,tarikhDDMMYYYY,tarikhPapar,qrUrl:'',attendanceUrl:''};
+  if(!r||!r.success){
+    $('kh-qr').innerHTML=`<div class="card" style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">QR Code Kehadiran</div>
+      <div class="alert ad" style="margin:0">${escHtml(r&&r.message?r.message:'Ralat menyemak status QR.')}</div>
+    </div>`;
+  }else if(!r.exists){
     $('kh-qr').innerHTML=`<div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <span style="font-size:13px;font-weight:600">QR Code Kehadiran</span>
-        <span style="font-size:12px;color:var(--muted)">${label}</span>
+        <span style="font-size:12px;color:var(--muted)">${escHtml(label)}</span>
       </div>
       <div class="alert ai" style="margin-bottom:8px">Tiada QR untuk sesi ini. Jana QR Code supaya peserta boleh scan kehadiran.</div>
-      <button class="btn btn-primary" id="kh-btn-jana" onclick="khJanaQR('${courseId}','${hari}','${tarikhDDMMYYYY}')">Jana QR Code</button>
+      <button class="btn btn-primary" id="kh-btn-jana">Jana QR Code</button>
     </div>`;
+    $('kh-btn-jana').addEventListener('click',()=>khJanaQR(courseId,hari,tarikhDDMMYYYY));
   }else{
+    const attendanceUrl=khSafeAttendanceUrl(r.attendanceUrl);
+    const qrUrl=khSafeQrUrl(r.qrUrl);
+    khQrActionState.qrUrl=qrUrl;
+    khQrActionState.attendanceUrl=attendanceUrl;
     $('kh-qr').innerHTML=`<div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <span style="font-size:13px;font-weight:600">QR Code Kehadiran</span>
-        <span style="font-size:12px;color:var(--muted)">${label}</span>
+        <span style="font-size:12px;color:var(--muted)">${escHtml(label)}</span>
       </div>
       <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
-        <img src="${r.qrUrl}" alt="QR Code" style="width:180px;height:180px;border:1px solid var(--border);border-radius:8px">
+        <img id="kh-qr-img" alt="QR Code" style="width:180px;height:180px;border:1px solid var(--border);border-radius:8px">
         <div style="flex:1;min-width:160px">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Jana Pada</div>
-          <div style="font-size:13px;margin-bottom:8px">${r.tarikhJana||'-'}</div>
+          <div style="font-size:13px;margin-bottom:8px">${escHtml(r.tarikhJana||'-')}</div>
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase">ID QR</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">${r.qrid||'-'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${escHtml(r.qrid||'-')}</div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Kod Pendek</div>
+          <div style="font-size:18px;font-weight:700;letter-spacing:2px;margin-bottom:8px">${escHtml(r.shortCode||'-')}</div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Pautan Kehadiran</div>
+          <a id="kh-attendance-link" style="display:block;font-size:12px;overflow-wrap:anywhere;margin-bottom:12px"></a>
+          ${attendanceUrl?'':'<div class="alert ad" style="margin-bottom:12px">Pautan kehadiran daripada server tidak sah.</div>'}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="khMuatTurunQR('${r.qrUrl}')">Muat Turun QR</button>
-            <button class="btn btn-danger btn-sm" onclick="khJanaQRSemula('${courseId}','${hari}','${tarikhDDMMYYYY}')">Jana Semula</button>
+            <button class="btn btn-primary btn-sm" id="kh-btn-copy" ${attendanceUrl?'':'disabled'}>Salin Pautan</button>
+            <button class="btn btn-primary btn-sm" id="kh-btn-whatsapp" ${attendanceUrl?'':'disabled'}>Kongsi WhatsApp</button>
+            <button class="btn btn-primary btn-sm" id="kh-btn-open" ${attendanceUrl?'':'disabled'}>Buka Pautan</button>
+            <button class="btn btn-primary btn-sm" id="kh-btn-download" ${qrUrl?'':'disabled'}>Muat Turun QR</button>
+            <button class="btn btn-danger btn-sm" id="kh-btn-regenerate">Jana Semula</button>
           </div>
         </div>
       </div>
     </div>`;
+    const img=$('kh-qr-img');if(img&&qrUrl)img.src=qrUrl;
+    const link=$('kh-attendance-link');
+    if(link){link.textContent=attendanceUrl||'-';if(attendanceUrl){link.href=attendanceUrl;link.target='_blank';link.rel='noopener'}}
+    $('kh-btn-copy').addEventListener('click',khSalinPautan);
+    $('kh-btn-whatsapp').addEventListener('click',khKongsiWhatsApp);
+    $('kh-btn-open').addEventListener('click',khBukaPautan);
+    $('kh-btn-download').addEventListener('click',()=>khMuatTurunQR(khQrActionState.qrUrl));
+    $('kh-btn-regenerate').addEventListener('click',()=>khJanaQRSemula(courseId,hari,tarikhDDMMYYYY));
   }
+}
+
+function khSafeAttendanceUrl(value){
+  try{
+    const u=new URL(String(value||''));
+    const path=u.pathname.replace(/\/+$/,'');
+    const code=normalizeAttendanceCode(u.searchParams.get('hadir'));
+    if(u.protocol!=='https:'||u.origin!=='https://kursusitu.github.io'||path!=='/spdk'||
+       !/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/.test(code))return'';
+    return u.href;
+  }catch(e){return''}
+}
+function khSafeQrUrl(value){
+  try{
+    const u=new URL(String(value||''));
+    return u.protocol==='https:'&&u.hostname==='api.qrserver.com'?u.href:'';
+  }catch(e){return''}
+}
+async function khSalinPautan(){
+  const url=khQrActionState&&khQrActionState.attendanceUrl;
+  if(!url)return;
+  try{
+    if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(url);
+    else{
+      const ta=document.createElement('textarea');
+      ta.value=url;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();
+      const copied=document.execCommand('copy');
+      document.body.removeChild(ta);
+      if(!copied)throw new Error('copy failed');
+    }
+    toast('Pautan kehadiran disalin.','success');
+  }catch(e){toast('Pautan tidak dapat disalin. Sila salin secara manual.','warning')}
+}
+function khKongsiWhatsApp(){
+  const state=khQrActionState;
+  if(!state||!state.attendanceUrl)return;
+  const kursus=khKursusData.find(x=>x.courseId===state.courseId);
+  const namaKursus=kursus&&kursus.namaKursus?kursus.namaKursus:'Kursus SPDK';
+  const mesej='Kehadiran '+namaKursus+'\nHari '+state.hari+' — '+state.tarikhPapar+
+    '\n\nSila rekod kehadiran melalui pautan berikut:\n'+state.attendanceUrl+
+    '\n\nLog masuk menggunakan akaun SPDK sendiri.';
+  const w=window.open('https://wa.me/?text='+encodeURIComponent(mesej),'_blank','noopener');
+  if(w)w.opener=null;
+}
+function khBukaPautan(){
+  const url=khQrActionState&&khQrActionState.attendanceUrl;
+  if(!url)return;
+  const w=window.open(url,'_blank','noopener');
+  if(w)w.opener=null;
 }
 
 async function khJanaQR(courseId,hari,tarikhDDMMYYYY){
@@ -2270,30 +2401,70 @@ async function resetPWUser(id,nama){
 /* AWAM */
 function pgScanQR(){
   const params=new URLSearchParams(window.location.hash.split('?')[1]||'');
+  const routeCode=normalizeAttendanceCode(params.get('hadir'));
+  const routeVia=params.get('via')==='qr'?'qr':'';
   const courseId=params.get('courseId')||'';
   const hari=params.get('hari')||'';
   const tarikh=params.get('tarikh')||'';
+  const legacyToken=courseId&&hari?courseId+'|'+hari+'|'+tarikh:'';
+  const pending=routeCode?savePendingAttendance(routeCode,routeVia):(legacyToken?null:getPendingAttendance());
+  const shortCode=pending?pending.shortCode:'';
+  const via=pending?pending.via:'';
+  const bukanPeserta=S.token&&S.role!=='peserta';
   setView(`<div class="auth-bg"><div class="auth-card">
     <div class="auth-logos"><img src="${L.L02}"></div>
-    <div class="auth-title">Imbas QR Kehadiran</div>
-    <div class="auth-subtitle">${tarikh?'Hari '+hari+' — '+tarikh:'Masukkan kod QR yang diimbas'}</div>
-    <div id="qra"></div>
-    <div class="fg"><label>Kod QR / Token</label><input id="qrk" value="${courseId&&hari?courseId+'|'+hari+'|'+tarikh:''}" placeholder="Kod QR"></div>
-    <button class="btn btn-primary btn-block" onclick="doScanQR()">Rekod Kehadiran</button>
+    <div class="auth-title">Pautan Kehadiran</div>
+    <div class="auth-subtitle">${shortCode?'Kod pendek: '+escHtml(shortCode):(tarikh?'Hari '+escHtml(hari)+' — '+escHtml(tarikh):'Masukkan kod pendek atau token QR legacy')}</div>
+    <div id="qra">${bukanPeserta?'<div class="alert ad">Pautan kehadiran hanya boleh digunakan oleh peserta. Sila gunakan akaun peserta.</div>':''}</div>
+    <div class="fg"><label>Kod Pendek / Token Legacy</label><input id="qrk" value="${escHtml(shortCode||legacyToken)}" placeholder="Contoh: AB7K9X atau CourseID|Hari|Tarikh"></div>
+    <button class="btn btn-primary btn-block" id="qr-submit" ${bukanPeserta?'disabled':''}>${S.token?'Rekod Kehadiran':'Log Masuk untuk Rekod'}</button>
     ${appVersionHtml()}
   </div></div>`);
-  if(courseId&&hari&&S.token)setTimeout(doScanQR,500);
+  const btn=$('qr-submit');
+  if(btn&&!bukanPeserta)btn.addEventListener('click',doScanQR);
+  if(shortCode&&S.token&&S.role==='peserta'&&/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/.test(shortCode)){
+    const autoKey=shortCode+'|'+via;
+    if(sessionStorage.getItem(ATTENDANCE_AUTO_KEY)!==autoKey){
+      sessionStorage.setItem(ATTENDANCE_AUTO_KEY,autoKey);
+      setTimeout(doScanQR,300);
+    }
+  }else if(legacyToken&&S.token&&S.role==='peserta')setTimeout(doScanQR,500);
 }
 async function doScanQR(){
   const k=$('qrk').value.trim();
   if(!k){$('qra').innerHTML='<div class="alert ad">Sila masukkan kod QR.</div>';return}
+  if(S.token&&S.role!=='peserta'){
+    $('qra').innerHTML='<div class="alert ad">Pautan kehadiran hanya boleh digunakan oleh peserta.</div>';
+    return;
+  }
+  const normalized=normalizeAttendanceCode(k);
+  const isShortCode=/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/.test(normalized);
+  const legacyParts=k.split('|').map(x=>x.trim());
+  const isLegacy=legacyParts.length===3&&legacyParts[0]&&/^\d+$/.test(legacyParts[1])&&parseInt(legacyParts[1],10)>0&&legacyParts[2];
+  if(!isShortCode&&!isLegacy){
+    $('qra').innerHTML='<div class="alert ad">Kod tidak sah. Gunakan kod pendek enam aksara atau token CourseID|Hari|Tarikh.</div>';
+    return;
+  }
+  const pending=getPendingAttendance();
+  const via=pending&&pending.shortCode===normalized?pending.via:'';
+  if(isShortCode)savePendingAttendance(normalized,via);
   if(!S.token){toast('Sila log masuk dahulu.','warning');goTo('login');return}
+  const btn=$('qr-submit');
+  if(btn){btn.disabled=true;btn.textContent='Merekod...'}
   loading(true);
   try{
-    const r=await api('scanQR',{qrToken:k});
-    $('qra').innerHTML=r.success?`<div class="alert as">✅ Kehadiran berjaya direkod untuk <strong>${r.nama||''}</strong>.</div>`:`<div class="alert ad">${r.message||'Kod QR tidak sah.'}</div>`;
+    const payload=isShortCode
+      ?{shortCode:normalized,via}
+      :{courseId:legacyParts[0],hari:parseInt(legacyParts[1],10),tarikh:legacyParts[2],via:'qr'};
+    const r=await api('scanQR',payload);
+    if(r.success||r.alreadyRecorded)completePendingAttendance();
+    $('qra').innerHTML=r.success
+      ?`<div class="alert as">✅ Kehadiran berjaya direkod untuk <strong>${escHtml(r.nama||'')}</strong>.</div>`
+      :`<div class="alert ${r.alreadyRecorded?'ai':'ad'}">${escHtml(r.message||'Kod QR tidak sah.')}</div>`;
   }catch(e){$('qra').innerHTML='<div class="alert ad">Ralat sambungan.</div>'}
   loading(false);
+  const btnSemasa=$('qr-submit');
+  if(btnSemasa){btnSemasa.disabled=false;btnSemasa.textContent='Rekod Kehadiran'}
 }
 function pgVerifyCert(){
   const params=new URLSearchParams(window.location.hash.split('?')[1]||'');

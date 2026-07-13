@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "releasedAt": "2026-07-13",
-  "notes": "Improve Surat Tawaran PDF pagination and keep the signatory block together."
+  "notes": "Add short attendance links with login resume and QR fallback."
 }
