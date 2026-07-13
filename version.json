@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "releasedAt": "2026-07-13",
-  "notes": "Align PWA Surat Tawaran editor with GAS, remove table borders, add signatory placeholders, and fix hidden participant selection."
+  "notes": "Improve Surat Tawaran PDF pagination and keep the signatory block together."
 }

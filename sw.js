@@ -1,4 +1,4 @@
-var CACHE = 'spdk-cache-v1.0.2';
+var CACHE = 'spdk-cache-v1.0.3';
 var OFFLINE_URL = 'offline.html';
 
 self.addEventListener('install', function(e) {
