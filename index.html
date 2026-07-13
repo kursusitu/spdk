@@ -590,11 +590,9 @@ function buildCertHtml(s,appUrl,user){
     '<img src="'+qrSrc+'" alt="QR Pengesahan" width="70" height="70" style="display:block;width:70px;height:70px;">'+
     '</div>'+
     '<div style="position:absolute;top:56px;right:118px;max-width:430px;text-align:right;">'+
-    '<p style="margin:0;font-size:9.5px;font-weight:bold;line-height:1.25;color:#333;font-family:\'Courier New\',monospace;letter-spacing:.5px;">No. Sijil: '+escHtml(certId)+'</p>'+
-    '</div>'+
-    (cpdText?'<div style="position:absolute;top:78px;right:118px;max-width:430px;text-align:right;">'+
-    '<p style="margin:0;font-size:9.5px;font-weight:bold;line-height:1.25;color:#333;font-family:\'Courier New\',monospace;letter-spacing:.3px;white-space:nowrap;">'+escHtml(cpdText)+'</p>'+
-    '</div>':'')+
+'<p style="margin:0;font-size:9.5px;font-weight:bold;line-height:1.15;color:#333;font-family:\'Courier New\',monospace;letter-spacing:.5px;white-space:nowrap;">No. Sijil: '+escHtml(certId)+'</p>'+
+(cpdText?'<p style="margin:2px 0 0;font-size:9.5px;font-weight:bold;line-height:1.15;color:#333;font-family:\'Courier New\',monospace;letter-spacing:.3px;white-space:nowrap;">'+escHtml(cpdText)+'</p>':'')+
+'</div>'+
     titleBlockHtml+
     namaBlockHtml+
     courseBlockHtml+
