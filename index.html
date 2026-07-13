@@ -1546,10 +1546,11 @@ async function khLoadPeserta(courseId,hari){
   khPesertaData=[];
   try{
     const r=await api('getSenaraiKehadiran',{courseId,hari});
-    if(!r.success){$('khc').innerHTML=`<div class="alert ad">${r.message||'Ralat.'}</div>`;return}
+    if(!r.success){$('khc').innerHTML=`<div class="alert ad">${r.message||'Ralat.'}</div>`;return false}
     khPesertaData=r.peserta||[];
     khRenderPeserta();
-  }catch(e){$('khc').innerHTML='<div class="alert ad">Ralat sistem.</div>'}
+    return true;
+  }catch(e){$('khc').innerHTML='<div class="alert ad">Ralat sistem.</div>';return false}
 }
 
 function khRenderPeserta(){
@@ -1609,8 +1610,10 @@ async function khSimpanKehadiran(){
   try{
     const r=await api('rekodKehadiran',{courseId,hari:khHariTerpilih.hari,tarikhHadir:khHariTerpilih.tarikh,rekods});
     toast(r.message||(r.success?'Berjaya.':'Gagal.'),r.success?'success':'danger');
+    if(r.success)await khLoadPeserta(courseId,khHariTerpilih.hari);
   }catch(e){toast('Ralat sambungan.','danger')}
-  btn.disabled=false; btn.textContent='Simpan Kehadiran';
+  const btnSemasa=$('kh-btn-simpan');
+  if(btnSemasa){btnSemasa.disabled=false;btnSemasa.textContent='Simpan Kehadiran'}
 }
 
 async function khLoadQR(courseId,hari,tarikhYMD){
