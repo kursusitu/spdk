@@ -127,7 +127,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.4';
+const APP_VERSION='1.0.5';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -139,8 +139,36 @@ let S={token:localStorage.getItem('spdk_token')||'',role:localStorage.getItem('s
 const PENDING_ATTENDANCE_KEY='spdk_pending_attendance';
 const ATTENDANCE_AUTO_KEY='spdk_pending_attendance_auto';
 let updateWorker=null;
-function saveAuth(t,r,n){S.token=t;S.role=r;S.nama=n;localStorage.setItem('spdk_token',t);localStorage.setItem('spdk_role',r);localStorage.setItem('spdk_nama',n)}
+let authBootstrapDone=false;
+let authBootstrapInFlight=false;
+let authExpiryHandling=false;
+let authNotice='';
+const PUBLIC_API_ACTIONS=new Set(['login','daftarAkaun','lupaKataLaluan','resetKataLaluan','verifyCert','getBahagianUnit']);
+const AUTH_EXPIRY_EXEMPT_ACTIONS=new Set(['renewSession','logKeluar']);
+function saveAuth(t,r,n){S.token=t;S.role=r;S.nama=n;authExpiryHandling=false;authNotice='';localStorage.setItem('spdk_token',t);localStorage.setItem('spdk_role',r);localStorage.setItem('spdk_nama',n)}
 function clearAuth(){S={token:'',role:'',nama:''};['spdk_token','spdk_role','spdk_nama'].forEach(k=>localStorage.removeItem(k))}
+function isPublicApiAction(action){return PUBLIC_API_ACTIONS.has(action)}
+function isSessionExpiredResponse(result){
+  if(!result||result.success!==false)return false;
+  if(result.auth===false)return true;
+  const message=String(result.message||'').trim();
+  return['Sesi tidak dijumpai.','Sesi telah tamat.','Sesi telah tamat tempoh.'].includes(message);
+}
+function handleExpiredSession(){
+  if(authExpiryHandling)return;
+  authExpiryHandling=true;
+  authBootstrapDone=true;
+  authNotice='Sesi anda telah tamat. Sila log masuk semula.';
+  clearAuth();
+  loading(false);
+  if(window.location.hash!=='#login')goTo('login');
+  else router();
+}
+function authExpiredError(message){
+  const error=new Error(message||'Sesi telah tamat.');
+  error.name='AuthExpiredError';
+  return error;
+}
 function normalizeAttendanceCode(value){return String(value||'').trim().toUpperCase()}
 function getPendingAttendance(){
   try{
@@ -184,13 +212,38 @@ function bootstrapAttendanceQuery(){
   window.history.replaceState(null,'',cleanUrl);
 }
 bootstrapAttendanceQuery();
-async function api(action,params={}){
+async function api(action,params={},options={}){
   const body={action,...params};
   if(S.token)body.token=S.token;
-  const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});
-  return res.json();
+  const request={method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)};
+  if(options.signal)request.signal=options.signal;
+  const res=await fetch(GAS_URL,request);
+  const result=await res.json();
+  if(!isPublicApiAction(action)&&!AUTH_EXPIRY_EXEMPT_ACTIONS.has(action)&&isSessionExpiredResponse(result)){
+    handleExpiredSession();
+    throw authExpiredError(result.message);
+  }
+  return result;
+}
+async function apiWithTimeout(action,params,timeoutMs){
+  const controller=typeof AbortController==='function'?new AbortController():null;
+  let timer;
+  const timeout=new Promise(function(_resolve,reject){
+    timer=setTimeout(function(){
+      if(controller)controller.abort();
+      const error=new Error('Permintaan tamat masa.');
+      error.name='TimeoutError';
+      reject(error);
+    },timeoutMs);
+  });
+  try{
+    return await Promise.race([api(action,params,controller?{signal:controller.signal}:{}),timeout]);
+  }finally{
+    clearTimeout(timer);
+  }
 }
 function toast(msg,type='info',ms=3500){
+  if(authExpiryHandling&&type==='danger')return;
   const c=document.getElementById('tc'),t=document.createElement('div');
   t.className='toast '+type;t.textContent=msg;c.appendChild(t);
   setTimeout(()=>t.remove(),ms);
@@ -263,6 +316,7 @@ const ROUTES={
 };
 function goTo(h){window.location.hash='#'+h}
 function router(){
+  if(!authBootstrapDone)return;
   const rawHash=window.location.hash.replace('#','')||'login';
   const h=rawHash.split('?')[0];
   window._routeParams=new URLSearchParams(rawHash.split('?')[1]||'');
@@ -282,9 +336,57 @@ function router(){
 }
 window.addEventListener('hashchange',router);
 window.addEventListener('load',function(){
-  router();
+  bootstrapAuth();
   checkAppVersion();
 });
+function showAuthBootstrapLoading(){
+  setView(`<div class="auth-bg"><div class="auth-card" style="text-align:center">
+    <div class="auth-logos"><img src="${L.L02}"></div>
+    <div class="auth-title">Menyemak Sesi</div>
+    <div class="auth-subtitle">Sila tunggu sebentar...</div>
+    <div class="dots"><span></span><span></span><span></span><span></span></div>
+    ${appVersionHtml()}
+  </div></div>`);
+}
+function showAuthBootstrapFailure(){
+  loading(false);
+  setView(`<div class="auth-bg"><div class="auth-card" style="text-align:center">
+    <div class="auth-logos"><img src="${L.L02}"></div>
+    <div class="auth-title">Semakan Sesi Tergendala</div>
+    <div class="alert ad">Tidak dapat menyemak sesi. Periksa sambungan internet dan cuba semula.</div>
+    <button class="btn btn-primary btn-block" onclick="bootstrapAuth()">Cuba Semula</button>
+    ${appVersionHtml()}
+  </div></div>`);
+}
+async function bootstrapAuth(timeoutMs=15000){
+  if(authBootstrapDone||authBootstrapInFlight)return;
+  if(!S.token){
+    authBootstrapDone=true;
+    router();
+    return;
+  }
+  authBootstrapInFlight=true;
+  showAuthBootstrapLoading();
+  try{
+    const result=await apiWithTimeout('renewSession',{},timeoutMs);
+    if(isSessionExpiredResponse(result)){
+      handleExpiredSession();
+      return;
+    }
+    if(!result||!result.success){
+      showAuthBootstrapFailure();
+      return;
+    }
+    saveAuth(result.token||S.token,result.role||S.role,result.nama||S.nama);
+    authBootstrapDone=true;
+    loading(false);
+    router();
+  }catch(error){
+    showAuthBootstrapFailure();
+  }finally{
+    authBootstrapInFlight=false;
+  }
+}
 function shell(title,active,body){
   const isA=['admin','superadmin'].includes(S.role);
   const isSA=S.role==='superadmin';
@@ -326,17 +428,20 @@ function shell(title,active,body){
 function togSb(){const s=$('sb'),o=$('mob-ov');s.classList.toggle('open');o.classList.toggle('show')}
 async function doLogout(){
   if(!confirm('Log keluar sekarang?'))return;
-  try{await api('logKeluar')}catch(e){}
+  const logoutRequest=api('logKeluar');
   clearAuth();goTo('login');
+  try{await logoutRequest}catch(e){}
 }
 /* AUTH */
 function pgLogin(){
+  const notice=authNotice;
+  authNotice='';
   setView(`<div class="auth-bg"><div class="auth-card">
     <div class="auth-logos"><img src="${L.L01}"><img src="${L.L02}"><img src="${L.L03}"><img src="${L.L04}"></div>
     <div class="auth-title">SPDK ITU</div>
     <div class="auth-subtitle">Sistem Pendigitalan Data Kursus — Institut Teknologi Unggas</div>
     <div class="dots"><span></span><span></span><span></span><span></span></div>
-    <div id="la"></div>
+    <div id="la">${notice?`<div class="alert ad">${escHtml(notice)}</div>`:''}</div>
     <div class="fg"><label>E-mel</label><input type="email" id="le" placeholder="emel@dvs.gov.my"></div>
     <div class="fg"><label>Kata Laluan</label><input type="password" id="lp" placeholder="Kata laluan"></div>
     <button class="btn btn-primary btn-block" id="bl" onclick="doLogin()">Log Masuk</button>

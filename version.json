@@ -1,5 +1,5 @@
 {
-  "version": "1.0.4",
-  "releasedAt": "2026-07-13",
-  "notes": "Add short attendance links with login resume and QR fallback."
+  "version": "1.0.5",
+  "releasedAt": "2026-07-14",
+  "notes": "Handle expired sessions gracefully on app startup."
 }
