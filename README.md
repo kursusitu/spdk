@@ -53,7 +53,7 @@ SPDK ITU adalah **portal pengurusan kursus dalaman Institut Teknologi Unggas (IT
 | 🏫 **Urus Kursus** | Tambah, kemaskini, padam kursus |
 | ✅ **Urus Pendaftaran** | Lulus/tolak permohonan, bulk approve/reject |
 | 📧 **Surat Tawaran** | Jana dan hantar surat tawaran via emel |
-| 📷 **Kehadiran & QR** | Rekod kehadiran, jana QR code, scan QR |
+| 📷 **Kehadiran & QR** | Tick manual admin, jana/scan QR, dan refresh status authoritative daripada backend selepas save |
 | 💬 **Maklum Balas** | Borang maklum balas peserta, soalan dinamik |
 | 🏆 **eCERT** | Auto-generate sijil digital, muat turun, verifikasi QR |
 | 📈 **Laporan & Statistik** | Graf & carta, eksport Excel/PDF |
@@ -220,6 +220,13 @@ dikekalkan berasingan dalam repo `BurnDVS/SPDK-V1.5`.
 ---
 
 ## Changelog
+
+### 2026-07-13
+
+- Selepas manual attendance disimpan, senarai peserta dimuat semula daripada
+  backend supaya checkbox memaparkan status authoritative, termasuk rekod QR
+  yang tidak boleh dibuang melalui stale untick.
+- Perubahan frontend direkodkan dalam commit `132d233`.
 
 ### 2026-07-11
 
