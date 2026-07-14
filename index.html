@@ -127,7 +127,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.5';
+const APP_VERSION='1.0.6';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -614,13 +614,63 @@ function pgKatalog(){
       if(!r.success){$('kc').innerHTML=`<div class="alert ad">${r.message}</div>`;return}
       const ks=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
       $('kc').innerHTML=ks.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
-        ${ks.map(k=>`<div class="card"><div style="font-weight:700;font-size:16px;margin-bottom:8px">${k.namaKursus}</div>
-        <div style="font-size:13px;color:#6b7280;margin-bottom:12px">${k.tarikhMulaInput||''} – ${k.tarikhTamatInput||''}</div>
-        <div style="font-size:13px;margin-bottom:16px">${k.penerangan||''}</div>
-        <button class="btn btn-primary btn-sm" onclick="daftarKursus('${k.courseId}','${k.namaKursus.replace(/'/g,'')}')">Daftar Sekarang</button></div>`).join('')}
+        ${ks.map(k=>{
+          const state=getKatalogRegistrationState(k);
+          const action=state.disabled
+            ?`<button class="btn btn-secondary btn-sm" disabled>${state.buttonText}</button>`
+            :`<button class="btn btn-primary btn-sm" onclick="daftarKursus('${k.courseId}','${k.namaKursus.replace(/'/g,'')}')">${state.buttonText}</button>`;
+          return`<div class="card"><div style="font-weight:700;font-size:16px;margin-bottom:8px">${k.namaKursus}</div>
+        <div style="font-size:13px;color:#6b7280;margin-bottom:12px">${k.tarikhMulaInput||k.tarikhMula||''} – ${k.tarikhTamatInput||k.tarikhTamat||''}</div>
+        <div style="display:inline-block;background:#eff6ff;color:#1e429f;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:600;margin-bottom:10px">${state.statusLabel}</div>
+        <div style="font-size:13px;margin-bottom:${state.infoText?'8px':'16px'}">${k.penerangan||''}</div>
+        ${state.infoText?`<div style="font-size:13px;color:#6b7280;margin-bottom:16px">${state.infoText}</div>`:''}
+        ${action}</div>`;
+        }).join('')}
       </div>`:'<div class="alert ai">Tiada kursus aktif pada masa ini.</div>';
     }catch(e){$('kc').innerHTML='<div class="alert ad">Ralat memuatkan katalog.</div>'}
   })();
+}
+function katalogDateOnly(value){
+  if(!value)return'';
+  var s=String(value).trim();
+  var m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return m[1]+'-'+m[2]+'-'+m[3];
+  m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s|$)/);
+  if(m)return m[3]+'-'+m[2]+'-'+m[1];
+  var d=value instanceof Date?value:new Date(s);
+  if(isNaN(d.getTime()))return'';
+  var parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+  var out={};parts.forEach(p=>{out[p.type]=p.value});
+  return out.year+'-'+out.month+'-'+out.day;
+}
+function formatTarikhBm(value){
+  var ymd=katalogDateOnly(value);
+  if(!ymd)return String(value||'');
+  var p=ymd.split('-');
+  var bulan=['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
+  return parseInt(p[2],10)+' '+bulan[parseInt(p[1],10)-1]+' '+p[0];
+}
+function getKatalogRegistrationState(k,todayValue){
+  var today=katalogDateOnly(todayValue||new Date());
+  var mula=katalogDateOnly(k.tarikhMulaInput||k.tarikhMula);
+  var tamat=katalogDateOnly(k.tarikhTamatInput||k.tarikhTamat);
+  var buka=katalogDateOnly(k.tarikhMulaDaftarInput||k.tarikhMulaDaftar);
+  var tutup=katalogDateOnly(k.tarikhTutupDaftarInput||k.tarikhTutupDaftar);
+  var sedangBerlangsung=mula&&tamat&&today>=mula&&today<=tamat;
+  var sudahTutup=tutup&&today>tutup;
+  if(sedangBerlangsung){
+    return{statusLabel:'Sedang Berlangsung',infoText:sudahTutup?'Pendaftaran ditutup pada '+formatTarikhBm(tutup):'Kursus telah bermula.',buttonText:'Pendaftaran Ditutup',disabled:true};
+  }
+  if(sudahTutup){
+    return{statusLabel:'Pendaftaran Ditutup',infoText:'Pendaftaran ditutup pada '+formatTarikhBm(tutup),buttonText:'Pendaftaran Ditutup',disabled:true};
+  }
+  if(buka&&today<buka){
+    return{statusLabel:'Pendaftaran Belum Dibuka',infoText:'Pendaftaran dibuka pada '+formatTarikhBm(buka),buttonText:'Belum Dibuka',disabled:true};
+  }
+  if(k.status!=='aktif'||(mula&&today>=mula)){
+    return{statusLabel:'Pendaftaran Ditutup',infoText:'',buttonText:'Pendaftaran Ditutup',disabled:true};
+  }
+  return{statusLabel:'Pendaftaran Dibuka',infoText:'',buttonText:'Daftar Sekarang',disabled:false};
 }
 async function daftarKursus(id,nama){
   if(!confirm(`Daftar kursus "${nama}"?`))return;

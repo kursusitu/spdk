@@ -1,5 +1,5 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "releasedAt": "2026-07-14",
-  "notes": "Handle expired sessions gracefully on app startup."
+  "notes": "Show course registration availability and enforce closed registration states."
 }
