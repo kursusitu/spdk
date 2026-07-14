@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "releasedAt": "2026-07-14",
-  "notes": "Show course registration availability and enforce closed registration states."
+  "notes": "Format course date ranges in Bahasa Malaysia."
 }
