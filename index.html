@@ -294,8 +294,8 @@ function showUpdatePopup(nextVersion,dismissKey){
   });
 }
 function badge(s){
-  const m={menunggu:'bm',lulus:'bl',tolak:'bt',batal:'bb',aktif:'ba'};
-  const lb={menunggu:'Menunggu',lulus:'Lulus',tolak:'Ditolak',batal:'Dibatal',aktif:'Aktif'};
+  const m={menunggu:'bm',lulus:'bl',tolak:'bt',batal:'bb',aktif:'ba',penuh:'bm'};
+  const lb={menunggu:'Menunggu',lulus:'Lulus',tolak:'Ditolak',batal:'Dibatal',aktif:'Aktif',penuh:'Penuh'};
   return`<span class="badge ${m[s]||'bb'}">${lb[s]||s}</span>`;
 }
 const ROUTES={
@@ -616,6 +616,7 @@ function pgKatalog(){
       $('kc').innerHTML=ks.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
         ${ks.map(k=>{
           const state=getKatalogRegistrationState(k);
+          const kuota=k.hadPeserta==null?'':`<div style="font-size:13px;color:#374151;margin-bottom:8px">${k.jumlahPeserta||0} / ${k.hadPeserta} peserta<br><span style="color:#6b7280">Baki ${k.bakiTempat} tempat</span></div>`;
           const action=state.disabled
             ?`<button class="btn btn-secondary btn-sm" disabled>${state.buttonText}</button>`
             :`<button class="btn btn-primary btn-sm" onclick="daftarKursus('${k.courseId}','${k.namaKursus.replace(/'/g,'')}')">${state.buttonText}</button>`;
@@ -623,6 +624,7 @@ function pgKatalog(){
         <div style="font-size:13px;color:#6b7280;margin-bottom:12px">${formatJulatTarikhBm(k.tarikhMulaInput||k.tarikhMula,k.tarikhTamatInput||k.tarikhTamat)}</div>
         <div style="display:inline-block;background:#eff6ff;color:#1e429f;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:600;margin-bottom:10px">${state.statusLabel}</div>
         <div style="font-size:13px;margin-bottom:${state.infoText?'8px':'16px'}">${k.penerangan||''}</div>
+        ${kuota}
         ${state.infoText?`<div style="font-size:13px;color:#6b7280;margin-bottom:16px">${state.infoText}</div>`:''}
         ${action}</div>`;
         }).join('')}
@@ -690,6 +692,9 @@ function getKatalogRegistrationState(k,todayValue){
   var tutup=katalogDateOnly(k.tarikhTutupDaftarInput||k.tarikhTutupDaftar);
   var sedangBerlangsung=mula&&tamat&&today>=mula&&today<=tamat;
   var sudahTutup=tutup&&today>tutup;
+  if(k.status==='penuh'){
+    return{statusLabel:'Penuh',infoText:'Tiada tempat kosong buat masa ini.',buttonText:'Penuh',disabled:true};
+  }
   if(sedangBerlangsung){
     return{statusLabel:'Sedang Berlangsung',infoText:sudahTutup?'Pendaftaran ditutup pada '+formatTarikhBm(tutup):'Kursus telah bermula.',buttonText:'Pendaftaran Ditutup',disabled:true};
   }
@@ -1320,9 +1325,11 @@ async function loadKursus(){
     kuKursusRows=rows;
     $('kuc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama Kursus</th><th>Tarikh</th><th>Tempat</th><th>Peserta</th><th>Status</th><th></th></tr></thead><tbody>
       ${rows.map((k,i)=>{
-        const canEdit=(k.status||'aktif')==='aktif'||k.status==='penuh';
+        const statusAsal=k.statusAsal||k.status||'aktif';
+        const canEdit=statusAsal==='aktif'||statusAsal==='penuh';
         const namaEsc=String(k.namaKursus||'').replace(/'/g,'');
-        return `<tr><td><div style="font-weight:600">${escHtml(k.namaKursus)}</div><div style="font-size:12px;color:var(--muted)">${escHtml(k.penerangan||'')}</div></td><td>${k.tarikhMulaInput||'-'}${k.tarikhTamatInput&&k.tarikhTamatInput!==k.tarikhMulaInput?' - '+k.tarikhTamatInput:''}<div style="font-size:12px;color:var(--muted)">${k.masaMula&&k.masaTamat?escHtml(k.masaMula+' - '+k.masaTamat):''}</div></td><td>${escHtml(k.tempat||'-')}</td><td>${k.jumlahPeserta||0}</td><td>${badge(k.status||'aktif')}</td>
+        const peserta=k.hadPeserta==null?`${k.jumlahPeserta||0}`:`${k.jumlahPeserta||0} / ${k.hadPeserta}<div style="font-size:12px;color:var(--muted)">Baki ${k.bakiTempat} tempat</div>`;
+        return `<tr><td><div style="font-weight:600">${escHtml(k.namaKursus)}</div><div style="font-size:12px;color:var(--muted)">${escHtml(k.penerangan||'')}</div></td><td>${k.tarikhMulaInput||'-'}${k.tarikhTamatInput&&k.tarikhTamatInput!==k.tarikhMulaInput?' - '+k.tarikhTamatInput:''}<div style="font-size:12px;color:var(--muted)">${k.masaMula&&k.masaTamat?escHtml(k.masaMula+' - '+k.masaTamat):''}</div></td><td>${escHtml(k.tempat||'-')}</td><td>${peserta}</td><td>${badge(k.status||'aktif')}</td>
       <td><div style="display:flex;gap:6px;flex-wrap:wrap">${canEdit?`<button class="btn btn-secondary btn-sm" onclick="modalKursus(${i})">Edit</button>`:''}<button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.courseId}','${namaEsc}')">Batal</button></div></td></tr>`;
       }).join('')}
     </tbody></table></div>`:'<div class="alert ai">Tiada kursus.</div>';
