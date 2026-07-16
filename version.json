@@ -1,5 +1,5 @@
 {
-  "version": "1.0.7",
-  "releasedAt": "2026-07-14",
-  "notes": "Format course date ranges in Bahasa Malaysia."
+  "version": "1.0.8",
+  "releasedAt": "2026-07-16",
+  "notes": "Add optional participant limits, live quota display, and full-course protection."
 }
