@@ -1358,6 +1358,11 @@ function modalKursus(idx){
       <div class="fg"><label>Masa Tamat</label><input type="time" id="mkmt"></div>
     </div>
     <div class="fg"><label>Tempat</label><input id="mkl" placeholder="Contoh: Dewan Serbaguna DVS, Putrajaya"></div>
+    <div class="fg">
+      <label>Had Peserta (Pilihan)</label>
+      <input type="number" id="mkhp" min="1" max="10000" step="1" placeholder="Kosongkan jika tiada had">
+      <div style="font-size:12px;color:var(--muted);margin-top:5px">Kosong bermaksud tiada had maksimum peserta.</div>
+    </div>
     ${editMode?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:12px">
       <div class="fg"><label>Peserta Berdaftar</label><input value="${k.jumlahPeserta||0}" disabled></div>
       <div class="fg"><label>Status</label><input value="${escHtml(k.status||'aktif')}" disabled></div>
@@ -1378,6 +1383,7 @@ function modalKursus(idx){
     $('mkmm').value=k.masaMula||'';
     $('mkmt').value=k.masaTamat||'';
     $('mkl').value=k.tempat||'';
+    $('mkhp').value=k.hadPeserta==null?'':k.hadPeserta;
   }
 }
 async function saveKursus(idx){
@@ -1390,8 +1396,21 @@ async function saveKursus(idx){
   const masaMula=$('mkmm').value;
   const masaTamat=$('mkmt').value;
   const tempat=$('mkl').value.trim();
+  const hadPeserta=$('mkhp').value.trim();
   if(!namaKursus||!penerangan||!tarikhMula||!tarikhTamat||!masaMula||!masaTamat||!tempat){
     $('mka').innerHTML='<div class="alert ad">Sila isi semua medan bertanda wajib.</div>';
+    return;
+  }
+  if(hadPeserta&&!/^\d+$/.test(hadPeserta)){
+    $('mka').innerHTML='<div class="alert ad">Had peserta mesti nombor bulat positif.</div>';
+    return;
+  }
+  if(hadPeserta&&Number(hadPeserta)<1){
+    $('mka').innerHTML='<div class="alert ad">Had peserta mesti nombor bulat positif.</div>';
+    return;
+  }
+  if(hadPeserta&&Number(hadPeserta)>10000){
+    $('mka').innerHTML='<div class="alert ad">Had peserta tidak boleh melebihi 10000.</div>';
     return;
   }
   const btn=$('mk-btn-save');
@@ -1399,7 +1418,7 @@ async function saveKursus(idx){
   try{
     const payload={
       namaKursus, penerangan, tarikhMula, tarikhTamat,
-      masaMula, masaTamat, tempat,
+      masaMula, masaTamat, tempat, hadPeserta,
       tarikhMulaDaftar:$('mkrd').value, tarikhTutupDaftar:$('mktd').value
     };
     if(editMode)payload.courseId=k.courseId;
