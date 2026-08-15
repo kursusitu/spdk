@@ -98,6 +98,36 @@ tr:hover td{background:#f9fafb}
 .sl{font-size:13px;color:var(--muted);margin-top:2px}
 .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .ph h2{font-size:20px;font-weight:700}
+.lr-tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:2px solid var(--border);margin-bottom:20px;padding-bottom:0;scrollbar-width:thin}
+.lr-tab{flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;padding:10px 16px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.lr-tab:hover{color:var(--text)}
+.lr-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.lr-panel{display:none}
+.lr-panel.active{display:block}
+.lr-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px}
+.lr-filters input,.lr-filters select{min-width:0}
+.lr-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.lr-section-title{font-size:14px;font-weight:700}
+.lr-count{font-size:12px;color:var(--muted)}
+.lr-cell-main{font-weight:700;min-width:180px}
+.lr-cell-sub{font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap}
+.lr-status-grid{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:10px;margin-bottom:16px}
+.lr-status-item{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
+.lr-status-value{font-size:20px;font-weight:800;margin-bottom:2px}
+.lr-status-label{font-size:12px;color:var(--muted)}
+.lr-chart-scroll{overflow-x:auto;padding-bottom:6px}
+.lr-chart{display:flex;align-items:flex-end;gap:12px;min-width:720px;height:250px;padding:26px 10px 34px;border-bottom:1px solid var(--border)}
+.lr-chart-col{flex:1;min-width:44px;height:190px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
+.lr-chart-value{font-size:11px;font-weight:700;margin-bottom:5px;color:var(--primary-dark)}
+.lr-chart-track{height:150px;width:28px;display:flex;align-items:flex-end;background:#eff6ff;border-radius:8px 8px 3px 3px;overflow:hidden}
+.lr-chart-bar{width:100%;min-height:2px;background:linear-gradient(180deg,var(--accent),var(--primary));border-radius:8px 8px 3px 3px}
+.lr-chart-label{position:absolute;top:194px;font-size:10px;color:var(--muted);line-height:1.2;text-align:center;width:66px}
+.lr-stars{color:#f59e0b;letter-spacing:1px;white-space:nowrap}
+.lr-table-card{padding:0;overflow:hidden}
+.lr-table-card .tw{border:0;border-radius:0}
+.lr-empty{text-align:center;padding:30px!important;color:var(--muted)}
+.lr-note{font-size:12px;color:var(--muted);line-height:1.5}
+.lr-compact{font-size:12px;line-height:1.5}
 .alert{padding:14px 18px;border-radius:12px;font-size:14px;margin-bottom:16px}
 .ai{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
 .as{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
@@ -114,6 +144,8 @@ tr:hover td{background:#f9fafb}
   .main-version{text-align:center}
   .update-card{left:16px;right:16px;bottom:16px;width:auto}
   .update-actions .btn{flex:1}
+  .lr-status-grid{grid-template-columns:repeat(2,minmax(110px,1fr))}
+  .lr-tab{padding:9px 12px}
 }
 
 #st-editor table{border:none!important;border-collapse:collapse!important;width:100%!important;margin:12px 0!important}
@@ -127,7 +159,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.8';
+const APP_VERSION='1.0.9';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -399,9 +431,10 @@ function shell(title,active,body){
   const adminLinks=[
     ['admin','Panel Admin'],['admin-kursus','Urus Kursus'],
     ['admin-pendaftaran','Urus Pendaftaran'],['surat-tawaran','Surat Tawaran'],
-    ['kehadiran','Urus Kehadiran'],['maklum-balas','Penilaian Kursus']
+    ['kehadiran','Urus Kehadiran'],['maklum-balas','Penilaian Kursus'],
+    ['laporan','Laporan &amp; Statistik']
   ];
-  const saLinks=[['superadmin-pengguna','Urus Pengguna'],['laporan','Laporan']];
+  const saLinks=[['superadmin-pengguna','Urus Pengguna']];
   const links=isA?adminLinks:pesertaLinks;
   const navHtml=links.map(([k,lb])=>`<div class="ni ${active===k?'active':''}" onclick="goTo('${k}')">${lb}</div>`).join('');
   const saHtml=isSA?`<div class="nav-sec">Superadmin</div>${saLinks.map(([k,lb])=>`<div class="ni ${active===k?'active':''}" onclick="goTo('${k}')">${lb}</div>`).join('')}`:'';
@@ -2045,22 +2078,383 @@ function khMuatTurunQR(qrUrl){
   };
   img.src=qrUrl;
 }
-function pgLaporan(){
-  setView(shell('Laporan','laporan',`<div class="ph"><h2>Laporan & Statistik</h2></div><div id="lapc"><div class="alert ai">Memuatkan laporan...</div></div>`));
-  (async()=>{
-    try{
-      const r=await api('getLaporan');
-      const d=r||{};
-      $('lapc').innerHTML=`
-      <div class="sg">
-        <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.statPeserta&&d.statPeserta.jumlahUnik||0}</div><div class="sl">Jumlah Pengguna</div></div>
-        <div class="sc"><div class="si" style="background:#ecfdf5">📚</div><div class="sn">${d.statKursus&&d.statKursus.jumlah||0}</div><div class="sl">Jumlah Kursus</div></div>
-        <div class="sc"><div class="si" style="background:#fefce8">✅</div><div class="sn">${d.statPeserta&&d.statPeserta.jumlahDaftar||0}</div><div class="sl">Pendaftaran Lulus</div></div>
-        <div class="sc"><div class="si" style="background:#fdf4ff">🎓</div><div class="sn">${d.statSijil&&d.statSijil.jumlah||0}</div><div class="sl">Sijil Dikeluarkan</div></div>
-      </div>
-      <div class="card"><p style="color:#6b7280;font-size:14px">Export PDF akan tersedia dalam versi akan datang.</p></div>`;
-    }catch(e){$('lapc').innerHTML='<div class="alert ad">Ralat.</div>'}
-  })();
+var laporanDataPwa = null;
+var laporanTabAktif = 'ringkasan';
+
+function laporanNombor(value) {
+  var n = Number(value);
+  return isFinite(n) ? n : 0;
+}
+
+function laporanPageContentHtml() {
+  return '<div class="ph"><div><h2>Laporan &amp; Statistik</h2>' +
+    '<p class="lr-note" style="margin-top:4px">Data kursus, pendaftaran, kehadiran dan maklum balas.</p></div>' +
+    '<button class="btn btn-secondary btn-sm" onclick="laporanMuatData()">↻ Muat Semula</button></div>' +
+    '<div class="lr-tabs" role="tablist" aria-label="Bahagian laporan">' +
+      '<button class="lr-tab active" data-lr-tab="ringkasan" onclick="laporanSwitchTab(\'ringkasan\')">Ringkasan</button>' +
+      '<button class="lr-tab" data-lr-tab="kursus" onclick="laporanSwitchTab(\'kursus\')">Kursus</button>' +
+      '<button class="lr-tab" data-lr-tab="pendaftaran" onclick="laporanSwitchTab(\'pendaftaran\')">Pendaftaran</button>' +
+      '<button class="lr-tab" data-lr-tab="kehadiran" onclick="laporanSwitchTab(\'kehadiran\')">Kehadiran</button>' +
+      '<button class="lr-tab" data-lr-tab="maklum-balas" onclick="laporanSwitchTab(\'maklum-balas\')">Maklum Balas</button>' +
+    '</div>' +
+    '<div id="lr-ringkasan" class="lr-panel active"></div>' +
+    '<div id="lr-kursus" class="lr-panel"></div>' +
+    '<div id="lr-pendaftaran" class="lr-panel"></div>' +
+    '<div id="lr-kehadiran" class="lr-panel"></div>' +
+    '<div id="lr-maklum-balas" class="lr-panel"></div>';
+}
+
+function pgLaporan() {
+  laporanDataPwa = null;
+  laporanTabAktif = 'ringkasan';
+  setView(shell('Laporan & Statistik', 'laporan', laporanPageContentHtml()));
+  laporanMuatData();
+}
+
+function laporanLoadingHtml() {
+  return '<div class="alert ai">Memuatkan laporan...</div>';
+}
+
+function laporanErrorHtml(message) {
+  return '<div class="alert ad"><div style="font-weight:700;margin-bottom:5px">Laporan tidak dapat dimuatkan.</div>' +
+    '<div style="margin-bottom:12px">' + escHtml(message || 'Ralat sistem. Sila cuba lagi.') + '</div>' +
+    '<button class="btn btn-secondary btn-sm" onclick="laporanMuatData()">Cuba Semula</button></div>';
+}
+
+async function laporanMuatData() {
+  var ringkasan = $('lr-ringkasan');
+  if (!ringkasan) return;
+  ringkasan.innerHTML = laporanLoadingHtml();
+  ['kursus','pendaftaran','kehadiran','maklum-balas'].forEach(function(tab) {
+    var panel = $('lr-' + tab);
+    if (panel) panel.innerHTML = '';
+  });
+  try {
+    var r = await api('getLaporan');
+    if (!r || !r.success) {
+      laporanDataPwa = null;
+      ringkasan.innerHTML = laporanErrorHtml(r && r.message);
+      laporanSwitchTab('ringkasan');
+      return;
+    }
+    laporanDataPwa = r;
+    laporanRenderSemua();
+  } catch (e) {
+    if ($('lr-ringkasan')) {
+      $('lr-ringkasan').innerHTML = laporanErrorHtml(e && e.name === 'AuthExpiredError'
+        ? 'Sesi telah tamat.'
+        : 'Ralat sambungan. Sila semak rangkaian dan cuba lagi.');
+      laporanSwitchTab('ringkasan');
+    }
+  }
+}
+
+function laporanSwitchTab(tab) {
+  var tabs = ['ringkasan','kursus','pendaftaran','kehadiran','maklum-balas'];
+  if (tabs.indexOf(tab) === -1) return;
+  laporanTabAktif = tab;
+  document.querySelectorAll('.lr-tab').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-lr-tab') === tab);
+  });
+  tabs.forEach(function(name) {
+    var panel = $('lr-' + name);
+    if (panel) panel.classList.toggle('active', name === tab);
+  });
+}
+
+function laporanRenderSemua() {
+  if (!laporanDataPwa) return;
+  $('lr-ringkasan').innerHTML = laporanRingkasanHtml(laporanDataPwa);
+  $('lr-kursus').innerHTML = laporanKursusPanelHtml();
+  $('lr-pendaftaran').innerHTML = laporanPendaftaranPanelHtml(laporanDataPwa.laporanPendaftaran || []);
+  $('lr-kehadiran').innerHTML = laporanKehadiranPanelHtml();
+  $('lr-maklum-balas').innerHTML = laporanMaklumBalasPanelHtml(laporanDataPwa.laporanMaklumBalas || []);
+  laporanRenderKursus();
+  laporanRenderPendaftaran();
+  laporanRenderKehadiran();
+  laporanRenderMaklumBalas();
+  laporanSwitchTab(laporanTabAktif);
+}
+
+function laporanKpiCard(icon, background, value, label, subtext, suffix) {
+  return '<div class="sc"><div class="si" style="background:' + background + '">' + icon + '</div>' +
+    '<div class="sn">' + laporanNombor(value) + (suffix || '') + '</div><div class="sl">' + label + '</div>' +
+    '<div class="lr-note" style="margin-top:6px">' + subtext + '</div></div>';
+}
+
+function laporanRingkasanHtml(d) {
+  var k = d.statKursus || {};
+  var p = d.statPeserta || {};
+  var s = d.statSijil || {};
+  var h = d.statKehadiran || {};
+  var st = d.chartStatusPendaftaran || {};
+  var invalid = laporanNombor(h.kursusTarikhTidakSah);
+  var warning = invalid > 0
+    ? '<div class="alert aw">' + invalid + ' kursus mempunyai tarikh tidak sah; metrik kehadirannya tidak dikira.</div>'
+    : '';
+  return '<div class="sg">' +
+      laporanKpiCard('📚', '#eff6ff', k.jumlah, 'Jumlah Kursus',
+        'Aktif: ' + laporanNombor(k.aktif) + ' · Tamat: ' + laporanNombor(k.tamat) + ' · Dibatal: ' + laporanNombor(k.dibatal)) +
+      laporanKpiCard('👥', '#ecfdf5', p.jumlahUnik, 'Peserta Berdaftar Unik',
+        laporanNombor(p.jumlahDaftar) + ' jumlah pendaftaran') +
+      laporanKpiCard('🎓', '#fdf4ff', s.jumlah, 'Sijil Dijana',
+        'Peserta: ' + laporanNombor(s.jumlahPeserta) + ' · Penceramah: ' + laporanNombor(s.jumlahPenceramah)) +
+      laporanKpiCard('✅', '#fefce8', h.purataPct, 'Purata Kehadiran',
+        laporanNombor(h.jumlahHadir) + ' daripada ' + laporanNombor(h.jumlahPeluang) + ' slot peserta-hari', '%') +
+    '</div>' + warning +
+    '<div class="lr-section-title" style="margin-bottom:10px">Status Pendaftaran</div>' +
+    '<div class="lr-status-grid">' +
+      laporanStatusItem('Lulus', st.lulus, '#057a55') +
+      laporanStatusItem('Menunggu', st.menunggu, '#d97706') +
+      laporanStatusItem('Ditolak', st.tolak, '#e02424') +
+      laporanStatusItem('Dibatal', st.batal, '#6b7280') +
+    '</div>' +
+    '<div class="card"><div class="lr-section-head"><div class="lr-section-title">Pendaftaran Per Bulan</div>' +
+      '<span class="lr-note">12 bulan terkini</span></div>' +
+      laporanChartBulananHtml(d.chartPendaftaranBulan || []) + '</div>';
+}
+
+function laporanStatusItem(label, value, color) {
+  return '<div class="lr-status-item"><div class="lr-status-value" style="color:' + color + '">' +
+    laporanNombor(value) + '</div><div class="lr-status-label">' + label + '</div></div>';
+}
+
+function laporanChartBulananHtml(rows) {
+  if (!rows.length) return '<div class="alert ai">Tiada data pendaftaran bulanan.</div>';
+  var max = rows.reduce(function(current, row) {
+    return Math.max(current, laporanNombor(row.jumlah));
+  }, 0);
+  var bars = rows.map(function(row) {
+    var value = laporanNombor(row.jumlah);
+    var height = max > 0 ? Math.max(Math.round(value / max * 100), value > 0 ? 4 : 0) : 0;
+    var month = escHtml(row.bulan || '-');
+    return '<div class="lr-chart-col" role="img" aria-label="' + month + ': ' + value + ' pendaftaran">' +
+      '<div class="lr-chart-value">' + value + '</div><div class="lr-chart-track">' +
+      '<div class="lr-chart-bar" style="height:' + height + '%"></div></div>' +
+      '<div class="lr-chart-label">' + month + '</div></div>';
+  }).join('');
+  return '<div class="lr-chart-scroll"><div class="lr-chart" aria-label="Carta pendaftaran per bulan">' + bars + '</div></div>';
+}
+
+function laporanStatusBadge(status) {
+  var key = String(status || '').trim().toLowerCase();
+  var map = {
+    menunggu: ['bm','Menunggu'], lulus: ['bl','Lulus'], tolak: ['bt','Ditolak'],
+    batal: ['bb','Dibatal'], aktif: ['ba','Aktif'], penuh: ['bm','Penuh'],
+    tamat: ['bb','Tamat'], dibatal: ['bt','Dibatal']
+  };
+  var item = map[key] || ['bb', key || '-'];
+  return '<span class="badge ' + item[0] + '">' + escHtml(item[1]) + '</span>';
+}
+
+function laporanRatingHtml(value) {
+  var rating = Math.max(0, Math.min(5, laporanNombor(value)));
+  var full = Math.round(rating);
+  var stars = '';
+  for (var i = 1; i <= 5; i++) stars += i <= full ? '★' : '☆';
+  return '<span class="lr-stars" aria-label="' + rating.toFixed(1) + ' daripada 5 bintang">' +
+    stars + '</span> <strong>' + rating.toFixed(1) + '</strong>';
+}
+
+function laporanEmptyRow(cols, message) {
+  return '<tr><td colspan="' + cols + '" class="lr-empty">' + escHtml(message) + '</td></tr>';
+}
+
+function laporanKursusPanelHtml() {
+  return '<div class="card" style="margin-bottom:16px"><div class="lr-filters">' +
+      '<input id="lr-kursus-carian" type="search" placeholder="Cari nama kursus" oninput="laporanRenderKursus()">' +
+      '<select id="lr-kursus-status" onchange="laporanRenderKursus()"><option value="">Semua Status</option>' +
+        '<option value="aktif">Aktif</option><option value="penuh">Penuh</option><option value="tamat">Tamat</option>' +
+        '<option value="dibatal">Dibatal</option></select>' +
+      '<select id="lr-kursus-kuota" onchange="laporanRenderKursus()"><option value="">Semua Kuota</option>' +
+        '<option value="terhad">Terhad</option><option value="tanpa_had">Tanpa Had</option></select>' +
+    '</div></div>' +
+    '<div class="lr-section-head"><div class="lr-section-title">Laporan Kursus</div><span id="lr-kursus-count" class="lr-count">0 rekod</span></div>' +
+    '<div class="card lr-table-card"><div class="tw"><table><thead><tr><th>Kursus</th><th>Status</th><th>Kuota</th>' +
+      '<th>Pendaftaran</th><th>Kehadiran</th><th>Rating</th><th>Sijil</th></tr></thead>' +
+      '<tbody id="lr-kursus-rows"></tbody></table></div></div>';
+}
+
+function laporanTapisKursus(rows, filters) {
+  var query = String(filters.carian || '').trim().toLowerCase();
+  var status = String(filters.status || '').trim().toLowerCase();
+  var quota = String(filters.kuota || '').trim();
+  return (rows || []).filter(function(row) {
+    if (query && String(row.namaKursus || '').toLowerCase().indexOf(query) === -1) return false;
+    if (status && String(row.statusEfektif || '').toLowerCase() !== status) return false;
+    if (quota === 'terhad' && row.kuotaTanpaHad) return false;
+    if (quota === 'tanpa_had' && !row.kuotaTanpaHad) return false;
+    return true;
+  });
+}
+
+function laporanRenderKursus() {
+  if (!laporanDataPwa || !$('lr-kursus-rows')) return;
+  var rows = laporanTapisKursus(laporanDataPwa.laporanKursus || [], {
+    carian: $('lr-kursus-carian').value,
+    status: $('lr-kursus-status').value,
+    kuota: $('lr-kursus-kuota').value
+  });
+  $('lr-kursus-count').textContent = rows.length + ' rekod';
+  $('lr-kursus-rows').innerHTML = laporanKursusRowsHtml(rows);
+}
+
+function laporanKursusRowsHtml(rows) {
+  if (!rows.length) return laporanEmptyRow(7, 'Tiada kursus sepadan dengan penapis.');
+  return rows.map(function(k) {
+    var dateRange = (k.tarikhMula || k.tarikhTamat)
+      ? escHtml(k.tarikhMula || '-') + ' — ' + escHtml(k.tarikhTamat || '-')
+      : '—';
+    var quota = k.kuotaTanpaHad
+      ? '<span class="badge ba">Tanpa Had</span><div class="lr-cell-sub">Pengisian: ' + laporanNombor(k.jumlahPeserta) + '</div>'
+      : '<strong>Pengisian: ' + laporanNombor(k.jumlahPeserta) + ' / ' + laporanNombor(k.hadPeserta) + '</strong>' +
+        '<div class="lr-cell-sub">Baki: ' + laporanNombor(k.bakiTempat) + ' tempat</div>' +
+        '<div class="lr-cell-sub">Penggunaan: ' + laporanNombor(k.pctPenggunaanKuota) + '%</div>';
+    var attendance = k.statusKiraanKehadiran === 'tarikh_tidak_sah'
+      ? '<span class="badge bt">Tarikh tidak sah</span>'
+      : '<strong>' + laporanNombor(k.pctKehadiran) + '%</strong><div class="lr-cell-sub">' +
+        laporanNombor(k.bilHadir) + ' / ' + laporanNombor(k.jumlahPeluangKehadiran) + ' slot hadir</div>';
+    return '<tr><td><div class="lr-cell-main">' + escHtml(k.namaKursus || '-') + '</div>' +
+        '<div class="lr-cell-sub">' + dateRange + '</div><div class="lr-cell-sub">' + escHtml(k.tempat || '-') + '</div></td>' +
+      '<td>' + laporanStatusBadge(k.statusEfektif) + '</td><td class="lr-compact">' + quota + '</td>' +
+      '<td class="lr-compact"><strong>Jumlah: ' + laporanNombor(k.bilDaftar) + '</strong>' +
+        '<div>Lulus: ' + laporanNombor(k.bilLulus) + '</div><div>Ditolak: ' + laporanNombor(k.bilTolak) + '</div></td>' +
+      '<td class="lr-compact">' + attendance + '</td><td>' + laporanRatingHtml(k.puratRating) + '</td>' +
+      '<td class="lr-compact"><strong>Jumlah: ' + laporanNombor(k.bilSijil) + '</strong>' +
+        '<div>Peserta: ' + laporanNombor(k.bilSijilPeserta) + '</div>' +
+        '<div>Penceramah: ' + laporanNombor(k.bilSijilPenceramah) + '</div></td></tr>';
+  }).join('');
+}
+
+function laporanBulanKey(value) {
+  var match = String(value || '').match(/^\d{2}\/(\d{2})\/(\d{4})$/);
+  return match ? match[1] + '/' + match[2] : '';
+}
+
+function laporanPilihanBulan(rows) {
+  var seen = {};
+  (rows || []).forEach(function(row) {
+    var key = laporanBulanKey(row.tarikhDaftar);
+    if (key) seen[key] = true;
+  });
+  var months = ['','Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogos','Sep','Okt','Nov','Dis'];
+  return Object.keys(seen).sort(function(a, b) {
+    var pa = a.split('/');
+    var pb = b.split('/');
+    return (Number(pb[1]) * 12 + Number(pb[0])) - (Number(pa[1]) * 12 + Number(pa[0]));
+  }).map(function(key) {
+    var parts = key.split('/');
+    return '<option value="' + escHtml(key) + '">' + months[Number(parts[0])] + ' ' + escHtml(parts[1]) + '</option>';
+  }).join('');
+}
+
+function laporanPendaftaranPanelHtml(rows) {
+  return '<div class="card" style="margin-bottom:16px"><div class="lr-filters">' +
+      '<input id="lr-pend-carian" type="search" placeholder="Cari peserta atau kursus" oninput="laporanRenderPendaftaran()">' +
+      '<select id="lr-pend-status" onchange="laporanRenderPendaftaran()"><option value="">Semua Status</option>' +
+        '<option value="lulus">Lulus</option><option value="menunggu">Menunggu</option>' +
+        '<option value="tolak">Ditolak</option><option value="batal">Dibatal</option></select>' +
+      '<select id="lr-pend-bulan" onchange="laporanRenderPendaftaran()"><option value="">Semua Bulan</option>' +
+        laporanPilihanBulan(rows) + '</select></div></div>' +
+    '<div class="lr-section-head"><div class="lr-section-title">Laporan Pendaftaran</div><span id="lr-pend-count" class="lr-count">0 rekod</span></div>' +
+    '<div class="card lr-table-card"><div class="tw"><table><thead><tr><th>Peserta</th><th>Jawatan</th>' +
+      '<th>Bahagian / Unit</th><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th><th>Tarikh Proses</th></tr></thead>' +
+      '<tbody id="lr-pend-rows"></tbody></table></div></div>';
+}
+
+function laporanRenderPendaftaran() {
+  if (!laporanDataPwa || !$('lr-pend-rows')) return;
+  var query = String($('lr-pend-carian').value || '').trim().toLowerCase();
+  var status = $('lr-pend-status').value;
+  var month = $('lr-pend-bulan').value;
+  var rows = (laporanDataPwa.laporanPendaftaran || []).filter(function(row) {
+    var haystack = String(row.namaPeserta || '') + ' ' + String(row.namaKursus || '');
+    return (!query || haystack.toLowerCase().indexOf(query) !== -1) &&
+      (!status || String(row.status || '').toLowerCase() === status) &&
+      (!month || laporanBulanKey(row.tarikhDaftar) === month);
+  });
+  $('lr-pend-count').textContent = rows.length + ' rekod';
+  $('lr-pend-rows').innerHTML = rows.length ? rows.map(function(row) {
+    return '<tr><td><div class="lr-cell-main">' + escHtml(row.namaPeserta || '-') + '</div></td>' +
+      '<td>' + escHtml(row.jawatan || '-') + '</td><td>' + escHtml(row.bahagianUnit || '-') + '</td>' +
+      '<td>' + escHtml(row.namaKursus || '-') + '</td><td>' + escHtml(row.tarikhDaftar || '-') + '</td>' +
+      '<td>' + laporanStatusBadge(row.status) + '</td><td>' + escHtml(row.tarikhProses || '-') + '</td></tr>';
+  }).join('') : laporanEmptyRow(7, 'Tiada pendaftaran sepadan dengan penapis.');
+}
+
+function laporanKehadiranPanelHtml() {
+  return '<div class="alert ai"><strong>Rekod Kehadiran Sah</strong><br>' +
+      '<span class="lr-note">Senarai ini mengandungi rekod kehadiran yang sah sahaja; ia bukan senarai ketidakhadiran.</span></div>' +
+    '<div class="card" style="margin-bottom:16px"><div class="lr-filters">' +
+      '<input id="lr-hadir-carian" type="search" placeholder="Cari peserta atau kursus" oninput="laporanRenderKehadiran()">' +
+      '<select id="lr-hadir-kaedah" onchange="laporanRenderKehadiran()"><option value="">Semua Kaedah</option>' +
+        '<option value="qr_scan">Imbasan QR</option><option value="self_link">Pautan Kehadiran</option>' +
+        '<option value="manual">Manual</option></select></div></div>' +
+    '<div class="lr-section-head"><div class="lr-section-title">Rekod Kehadiran Sah</div><span id="lr-hadir-count" class="lr-count">0 rekod</span></div>' +
+    '<div class="card lr-table-card"><div class="tw"><table><thead><tr><th>Peserta</th><th>Jawatan</th>' +
+      '<th>Kursus</th><th>Tarikh Hadir</th><th>Hari</th><th>Kaedah</th></tr></thead>' +
+      '<tbody id="lr-hadir-rows"></tbody></table></div></div>';
+}
+
+function laporanKaedahLabel(method) {
+  var map = { qr_scan: 'Imbasan QR', self_link: 'Pautan Kehadiran', manual: 'Manual' };
+  return map[String(method || '').trim().toLowerCase()] || String(method || '-');
+}
+
+function laporanRenderKehadiran() {
+  if (!laporanDataPwa || !$('lr-hadir-rows')) return;
+  var query = String($('lr-hadir-carian').value || '').trim().toLowerCase();
+  var method = $('lr-hadir-kaedah').value;
+  var rows = (laporanDataPwa.laporanKehadiran || []).filter(function(row) {
+    var haystack = String(row.namaPeserta || '') + ' ' + String(row.namaKursus || '');
+    return (!query || haystack.toLowerCase().indexOf(query) !== -1) &&
+      (!method || String(row.kaedah || '').toLowerCase() === method);
+  });
+  $('lr-hadir-count').textContent = rows.length + ' rekod';
+  $('lr-hadir-rows').innerHTML = rows.length ? rows.map(function(row) {
+    return '<tr><td><div class="lr-cell-main">' + escHtml(row.namaPeserta || '-') + '</div></td>' +
+      '<td>' + escHtml(row.jawatan || '-') + '</td><td>' + escHtml(row.namaKursus || '-') + '</td>' +
+      '<td>' + escHtml(row.tarikhHadir || '-') + '</td><td>Hari ' + escHtml(row.hari || '-') + '</td>' +
+      '<td>' + escHtml(laporanKaedahLabel(row.kaedah)) + '</td></tr>';
+  }).join('') : laporanEmptyRow(6, 'Tiada rekod kehadiran sepadan dengan penapis.');
+}
+
+function laporanPilihanKursus(rows) {
+  var seen = {};
+  (rows || []).forEach(function(row) {
+    if (row.namaKursus) seen[row.namaKursus] = true;
+  });
+  return Object.keys(seen).sort().map(function(name) {
+    return '<option value="' + escHtml(name) + '">' + escHtml(name) + '</option>';
+  }).join('');
+}
+
+function laporanMaklumBalasPanelHtml(rows) {
+  return '<div class="alert ai"><strong>Penilaian Soalan Rating</strong><br>' +
+      '<span class="lr-note">Laporan ini merangkumi soalan rating sahaja, bukan jawapan maklum balas teks bebas.</span></div>' +
+    '<div class="card" style="margin-bottom:16px"><div class="lr-filters">' +
+      '<select id="lr-mb-kursus" onchange="laporanRenderMaklumBalas()"><option value="">Semua Kursus</option>' +
+        laporanPilihanKursus(rows) + '</select>' +
+      '<input id="lr-mb-carian" type="search" placeholder="Cari soalan rating" oninput="laporanRenderMaklumBalas()">' +
+    '</div></div>' +
+    '<div class="lr-section-head"><div class="lr-section-title">Laporan Maklum Balas</div><span id="lr-mb-count" class="lr-count">0 rekod</span></div>' +
+    '<div class="card lr-table-card"><div class="tw"><table><thead><tr><th>Kursus</th><th>Soalan Rating</th>' +
+      '<th>Purata Rating</th><th>Bilangan Responden</th></tr></thead><tbody id="lr-mb-rows"></tbody></table></div></div>';
+}
+
+function laporanRenderMaklumBalas() {
+  if (!laporanDataPwa || !$('lr-mb-rows')) return;
+  var course = $('lr-mb-kursus').value;
+  var query = String($('lr-mb-carian').value || '').trim().toLowerCase();
+  var rows = (laporanDataPwa.laporanMaklumBalas || []).filter(function(row) {
+    return (!course || row.namaKursus === course) &&
+      (!query || String(row.soalan || '').toLowerCase().indexOf(query) !== -1);
+  });
+  $('lr-mb-count').textContent = rows.length + ' rekod';
+  $('lr-mb-rows').innerHTML = rows.length ? rows.map(function(row) {
+    return '<tr><td>' + escHtml(row.namaKursus || '-') + '</td><td>' + escHtml(row.soalan || '-') + '</td>' +
+      '<td>' + laporanRatingHtml(row.puratRating) + '</td><td>' + laporanNombor(row.jumlahResponden) + '</td></tr>';
+  }).join('') : laporanEmptyRow(4, 'Tiada maklum balas rating sepadan dengan penapis.');
 }
 var ST_DEFAULT_TEMPLATE =
   '<p>Kepada,</p>'+

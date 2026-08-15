@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8",
-  "releasedAt": "2026-07-16",
-  "notes": "Add optional participant limits, live quota display, and full-course protection."
+  "version": "1.0.9",
+  "releasedAt": "2026-08-15",
+  "notes": "Upgrade Laporan & Statistik with five report tabs, corrected metrics, filters, and a monthly registration chart."
 }
