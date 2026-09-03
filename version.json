@@ -1,5 +1,5 @@
 {
-  "version": "1.0.9",
-  "releasedAt": "2026-08-15",
-  "notes": "Upgrade Laporan & Statistik with five report tabs, corrected metrics, filters, and a monthly registration chart."
+  "version": "1.0.10",
+  "releasedAt": "2026-09-03",
+  "notes": "Tambah Pengurusan CPD untuk admin dan superadmin dengan pratonton, pengesahan dan pemulihan keputusan tidak pasti."
 }

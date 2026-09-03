@@ -136,6 +136,20 @@ tr:hover td{background:#f9fafb}
 .sb-toggle{display:none;position:fixed;bottom:20px;left:20px;z-index:200;width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;background:var(--primary);color:#fff;font-size:20px;box-shadow:0 4px 16px rgba(26,86,219,.4)}
 .mob-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
 .mob-ov.show{display:block}
+.cpd-stack{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;min-width:0}
+.cpd-stack .sg{margin:16px 0 0;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.cpd-stack .sc{padding:16px;border:1px solid var(--border);box-shadow:none}
+.cpd-stack h3{font-size:17px;margin-bottom:14px}
+.cpd-stack .tw{max-width:100%}
+.cpd-stack table{min-width:760px}
+.cpd-stack td{overflow-wrap:anywhere}
+.cpd-note{font-size:13px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.cpd-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+.cpd-confirm{display:flex;align-items:flex-start;gap:12px;line-height:1.6;margin:16px 0;cursor:pointer}
+.cpd-confirm input{width:20px;height:20px;flex:0 0 20px;margin-top:3px;accent-color:var(--primary)}
+.cpd-stack .alert{margin:0;line-height:1.6;overflow-wrap:anywhere}
+.cpd-stack .btn{white-space:normal;min-height:44px}
+.cpd-stack [tabindex]:focus-visible,.cpd-stack .btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
@@ -159,7 +173,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.9';
+const APP_VERSION='1.0.10';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -178,7 +192,7 @@ let authNotice='';
 const PUBLIC_API_ACTIONS=new Set(['login','daftarAkaun','lupaKataLaluan','resetKataLaluan','verifyCert','getBahagianUnit']);
 const AUTH_EXPIRY_EXEMPT_ACTIONS=new Set(['renewSession','logKeluar']);
 function saveAuth(t,r,n){S.token=t;S.role=r;S.nama=n;authExpiryHandling=false;authNotice='';localStorage.setItem('spdk_token',t);localStorage.setItem('spdk_role',r);localStorage.setItem('spdk_nama',n)}
-function clearAuth(){S={token:'',role:'',nama:''};['spdk_token','spdk_role','spdk_nama'].forEach(k=>localStorage.removeItem(k))}
+function clearAuth(){cpdLeave();S={token:'',role:'',nama:''};['spdk_token','spdk_role','spdk_nama'].forEach(k=>localStorage.removeItem(k))}
 function isPublicApiAction(action){return PUBLIC_API_ACTIONS.has(action)}
 function isSessionExpiredResponse(result){
   if(!result||result.success!==false)return false;
@@ -247,12 +261,13 @@ bootstrapAttendanceQuery();
 async function api(action,params={},options={}){
   const body={action,...params};
   if(S.token)body.token=S.token;
+  const requestToken=body.token;
   const request={method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)};
   if(options.signal)request.signal=options.signal;
   const res=await fetch(GAS_URL,request);
   const result=await res.json();
   if(!isPublicApiAction(action)&&!AUTH_EXPIRY_EXEMPT_ACTIONS.has(action)&&isSessionExpiredResponse(result)){
-    handleExpiredSession();
+    if(requestToken&&requestToken===S.token)handleExpiredSession();
     throw authExpiredError(result.message);
   }
   return result;
@@ -342,15 +357,17 @@ const ROUTES={
   'admin-pendaftaran':{r:pgAdminPend,role:['admin','superadmin']},
   'kehadiran':{r:pgKehadiran,role:['admin','superadmin']},
   'laporan':{r:pgLaporan,role:['admin','superadmin']},
+  'admin-cpd':{r:pgCpdAdmin,role:['admin','superadmin']},
   'surat-tawaran':{r:pgSuratTawaran,role:['admin','superadmin']},
   'superadmin-pengguna':{r:pgUrusPengguna,role:['superadmin']},
   'scan-qr':{r:pgScanQR,pub:true},'verify-cert':{r:pgVerifyCert,pub:true}
 };
-function goTo(h){window.location.hash='#'+h}
+function goTo(h){if(h.split('?')[0]!=='admin-cpd')cpdLeave();window.location.hash='#'+h}
 function router(){
   if(!authBootstrapDone)return;
   const rawHash=window.location.hash.replace('#','')||'login';
   const h=rawHash.split('?')[0];
+  if(h!=='admin-cpd')cpdLeave();
   window._routeParams=new URLSearchParams(rawHash.split('?')[1]||'');
   const rt=ROUTES[h];
   if(!rt){goTo('login');return}
@@ -432,7 +449,7 @@ function shell(title,active,body){
     ['admin','Panel Admin'],['admin-kursus','Urus Kursus'],
     ['admin-pendaftaran','Urus Pendaftaran'],['surat-tawaran','Surat Tawaran'],
     ['kehadiran','Urus Kehadiran'],['maklum-balas','Penilaian Kursus'],
-    ['laporan','Laporan &amp; Statistik']
+    ['laporan','Laporan &amp; Statistik'],['admin-cpd','Pengurusan CPD']
   ];
   const saLinks=[['superadmin-pengguna','Urus Pengguna']];
   const links=isA?adminLinks:pesertaLinks;
@@ -465,6 +482,290 @@ async function doLogout(){
   clearAuth();goTo('login');
   try{await logoutRequest}catch(e){}
 }
+/* CPD ADMIN — course-scoped preview and explicit confirmation */
+var cpdPage = null;
+var cpdRun = null;
+const CPD_TIMEOUT_MS = 60000;
+const CPD_MESSAGES = Object.freeze({
+  CPD_INVALID_PAYLOAD: 'Permintaan CPD tidak sah.',
+  CPD_INVALID_COURSE: 'CourseID tidak sah. Sila pilih kursus semula.',
+  CPD_FINGERPRINT_REQUIRED: 'Pratonton CPD yang sah diperlukan.',
+  CPD_AUTH_REQUIRED: 'Sesi tidak sah atau telah tamat.',
+  CPD_FORBIDDEN: 'Akses ditolak.',
+  CPD_COURSE_NOT_FOUND: 'Kursus tidak dijumpai. Sila muat semula senarai kursus.',
+  CPD_NO_ACTIVE_SOURCE: 'Tiada sumber CPD aktif untuk kursus ini. Sila rujuk pentadbir konfigurasi sumber.',
+  CPD_SOURCE_CHANGED: 'Sumber atau rekod CPD telah berubah. Sila buat pratonton baharu.',
+  CPD_LOCK_TIMEOUT: 'Penyegerakan sedang digunakan. Sila cuba pratonton baharu sebentar lagi.',
+  CPD_VALIDATION_FAILED: 'Semakan CPD gagal. Sila buat pratonton baharu dan semak isu yang dipaparkan.',
+  CPD_HEADER_INVALID: 'Struktur data CPD tidak sah. Sila rujuk pentadbir konfigurasi sumber.',
+  CPD_INVALID_VALUE: 'Jenis nilai data CPD tidak sah. Sila rujuk pentadbir konfigurasi sumber.',
+  CPD_PARTIAL_WRITE: 'Sebahagian perubahan mungkin telah disimpan. Buat pratonton baharu dan semak sebelum cuba semula.',
+  CPD_INTERNAL_ERROR: 'Ralat sistem semasa penyegerakan CPD. Sila buat pratonton baharu sebelum cuba semula.'
+});
+const CPD_ROW_MESSAGES = Object.freeze({
+  CPD_RECORD_OK: 'Rekod melepasi semakan untuk tindakan yang dipaparkan.',
+  CPD_EMPTY: 'Tiada maklumat CPD; baris dilangkau.',
+  CPD_INVALID_IC: 'No. Kad Pengenalan tidak sah.',
+  CPD_INVALID_TEXT: 'Format maklumat CPD tidak sah.',
+  CPD_INVALID_RECORD: 'Rekod CPD tidak memenuhi semakan data.',
+  CPD_SOURCE_INVALID: 'Konfigurasi sumber tidak lengkap.',
+  CPD_AMBIGUOUS_SOURCE: 'Konfigurasi sumber bertindih.',
+  CPD_SOURCE_READ_FAILED: 'Sumber tidak dapat dibaca.',
+  CPD_HEADER_INVALID: 'Struktur lajur sumber tidak sah.',
+  CPD_AMBIGUOUS_MATCH: 'Padanan rekod CPD bertindih atau tidak jelas.',
+  CPD_ID_EXHAUSTED: 'Julat ID CPD tahun semasa telah habis.'
+});
+const CPD_ACTIONS = Object.freeze({
+  inserted: 'Akan Ditambah', updated: 'Akan Dikemas Kini', unchanged: 'Tiada Perubahan',
+  skipped: 'Dilangkau', error: 'Perlu Semakan'
+});
+function cpdOwn(object, key) { return Object.prototype.hasOwnProperty.call(object, key); }
+function cpdAllowed() { return !!S.token && ['admin','superadmin'].includes(S.role); }
+function cpdInvalidate(page, keepCourseLoad = false) {
+  if (!keepCourseLoad) page.generation++;
+  page.preview = null;
+  page.canExecute = false;
+  page.confirmed = false;
+}
+function cpdLeave() {
+  if (!cpdPage) return;
+  cpdInvalidate(cpdPage);
+  cpdPage = null;
+  // An in-flight execute is not cancelled by navigation. Keep its local busy guard.
+}
+function cpdCurrent(page, generation) {
+  return cpdPage === page && page.generation === generation && page.token === S.token &&
+    window.location.hash.split('?')[0] === '#admin-cpd';
+}
+function cpdCounts(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const result = {};
+  for (const key of ['inserted','updated','unchanged','skipped','errors']) {
+    if (!Number.isSafeInteger(value[key]) || value[key] < 0) return null;
+    result[key] = value[key];
+  }
+  return result;
+}
+function cpdPreviewData(result, courseId) {
+  const counts = cpdCounts(result && result.counts);
+  if (!result || result.success !== true || typeof result.canExecute !== 'boolean' || !counts ||
+      typeof result.fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(result.fingerprint) || !Array.isArray(result.rows)) return null;
+  const rows = [];
+  for (const row of result.rows) {
+    if (!row || !Number.isSafeInteger(row.source) || row.source < 1 ||
+        !Number.isSafeInteger(row.row) || row.row < 0 || !cpdOwn(CPD_ACTIONS, row.status)) return null;
+    rows.push({
+      source: row.source, row: row.row,
+      kategori: ['Peserta','Penceramah'].includes(row.kategori) ? row.kategori : '',
+      maskedNoKp: typeof row.maskedNoKp === 'string' && /^\*{6}-\*{2}-(?:[0-9]{4}|\*{4})$/.test(row.maskedNoKp)
+        ? row.maskedNoKp : '******-**-****',
+      status: row.status, code: cpdOwn(CPD_ROW_MESSAGES, row.code) ? row.code : 'UNKNOWN'
+    });
+  }
+  // Keep only the public projection, never arbitrary response properties.
+  return { courseId: courseId, fingerprint: result.fingerprint, counts: counts, rows: rows };
+}
+function cpdSelectedCourse(page) {
+  return page && page.courses.find(course => course.courseId === page.courseId && course.namaKursus.trim());
+}
+function cpdCanExecute() {
+  const page = cpdPage, preview = page && page.preview;
+  return !!(page && cpdAllowed() && !page.forbidden && !cpdRun && page.phase === 'preview' &&
+    preview && cpdSelectedCourse(page) && page.courseId === preview.courseId && page.canExecute === true &&
+    preview.counts.errors === 0 && page.confirmed && preview.counts.inserted + preview.counts.updated > 0);
+}
+function cpdSetConfirmed(checked) {
+  if (!cpdPage || cpdRun || !cpdPage.preview || cpdPage.forbidden) return;
+  cpdPage.confirmed = checked === true;
+  const button = $('cpd-execute');
+  if (button) button.disabled = !cpdCanExecute();
+}
+function cpdChangeCourse(courseId) {
+  if (!cpdPage || cpdRun || cpdPage.forbidden) return;
+  const page = cpdPage;
+  cpdInvalidate(page);
+  page.courseId = page.courses.some(course => course.courseId === courseId) ? courseId : '';
+  page.phase = 'ready';
+  page.result = null;
+  cpdRender();
+}
+function cpdFailure(page, result, keepCourseLoad = false) {
+  const code = result && result.success === false && cpdOwn(CPD_MESSAGES, result.code)
+    ? result.code : 'CPD_INTERNAL_ERROR';
+  cpdInvalidate(page, keepCourseLoad);
+  if (code === 'CPD_AUTH_REQUIRED') { handleExpiredSession(); return; }
+  page.forbidden = code === 'CPD_FORBIDDEN';
+  page.phase = keepCourseLoad ? 'courses' : 'ready';
+  page.result = { kind: code === 'CPD_PARTIAL_WRITE' ? 'uncertain' : 'error', code: code };
+}
+function pgCpdAdmin() {
+  cpdLeave();
+  if (!cpdAllowed()) return;
+  cpdPage = { token: S.token, generation: 0, courses: [], courseId: '', preview: null,
+    canExecute: false, confirmed: false, forbidden: false, phase: 'courses', result: null };
+  if (cpdRun && cpdRun.token === S.token) cpdPage.courseId = cpdRun.courseId;
+  cpdRender();
+  return cpdLoadCourses(true);
+}
+async function cpdLoadCourses(initial = false) {
+  if (!cpdPage || cpdPage.forbidden || (cpdRun && !initial)) return;
+  const page = cpdPage;
+  cpdInvalidate(page);
+  const generation = page.generation;
+  page.phase = 'courses';
+  page.result = null;
+  cpdRender();
+  try {
+    const result = await apiWithTimeout('getSenaraiKursus', {}, CPD_TIMEOUT_MS);
+    if (!cpdCurrent(page, generation)) return;
+    if (!result || result.success !== true) { cpdFailure(page, result); return; }
+    if (!Array.isArray(result.kursus) || result.kursus.some(course => !course ||
+        typeof course.courseId !== 'string' || !/^CRS-[0-9]{8}-[0-9]{4}$/.test(course.courseId) ||
+        typeof course.namaKursus !== 'string')) { cpdFailure(page, null); return; }
+    page.courses = result.kursus.map(course => ({ courseId: course.courseId, namaKursus: course.namaKursus,
+      tarikhMulaInput: typeof course.tarikhMulaInput === 'string' && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(course.tarikhMulaInput)
+        ? course.tarikhMulaInput : '' }));
+    if (!cpdSelectedCourse(page)) page.courseId = '';
+    page.phase = 'ready';
+  } catch (_) {
+    if (cpdCurrent(page, generation)) cpdFailure(page, null);
+  } finally {
+    if (cpdPage === page && page.token === S.token) cpdRender();
+  }
+}
+async function cpdPreview() {
+  if (!cpdPage || !cpdAllowed() || cpdPage.forbidden || cpdRun || !cpdPage.courseId || cpdPage.phase === 'courses') return;
+  if (!cpdSelectedCourse(cpdPage)) { cpdRender(); return; }
+  const page = cpdPage, courseId = page.courseId;
+  cpdInvalidate(page);
+  const generation = page.generation;
+  page.phase = 'loading';
+  page.result = null;
+  cpdRender();
+  try {
+    const result = await apiWithTimeout('previewCpdSync', { courseId: courseId }, CPD_TIMEOUT_MS);
+    if (!cpdCurrent(page, generation)) return;
+    if (!result || result.success !== true) { cpdFailure(page, result); return; }
+    const preview = cpdPreviewData(result, courseId);
+    if (!preview) { cpdFailure(page, null); return; }
+    page.preview = preview;
+    page.canExecute = result.canExecute;
+    page.phase = 'preview';
+  } catch (_) {
+    if (cpdCurrent(page, generation)) cpdFailure(page, null);
+  } finally {
+    if (cpdCurrent(page, page.generation)) cpdRender();
+  }
+}
+async function cpdExecute() {
+  if (!cpdCanExecute()) return;
+  const page = cpdPage, preview = page.preview;
+  const run = { token: S.token, courseId: preview.courseId };
+  cpdRun = run;
+  page.result = null;
+  cpdRender(); // Synchronous busy guard before the first await.
+  let outcome;
+  try {
+    const result = await apiWithTimeout('executeCpdSync', {
+      courseId: preview.courseId, fingerprint: preview.fingerprint
+    }, CPD_TIMEOUT_MS);
+    const counts = cpdCounts(result && result.counts);
+    if (result && result.success === true && counts) outcome = { kind: 'success', counts: counts };
+    else if (result && result.success === false && cpdOwn(CPD_MESSAGES, result.code)) outcome = { kind: 'failure', result: { success: false, code: result.code } };
+    else outcome = { kind: 'uncertain' };
+  } catch (_) {
+    // A timeout/abort/lost response does not prove that GAS stopped writing.
+    outcome = { kind: 'uncertain' };
+  } finally {
+    if (cpdRun === run) cpdRun = null;
+    const current = cpdPage;
+    if (current && current.token === run.token && S.token === run.token && current.courseId === run.courseId) {
+      // Re-entry may have started a course load; preserve that request and its loading state.
+      const keepCourseLoad = current.phase === 'courses';
+      if (outcome.kind === 'failure') cpdFailure(current, outcome.result, keepCourseLoad);
+      else {
+        cpdInvalidate(current, keepCourseLoad);
+        if (!keepCourseLoad) current.phase = 'ready';
+        current.result = outcome;
+      }
+      cpdRender();
+    } else if (current) cpdRender();
+  }
+}
+function cpdSummaryHtml(counts) {
+  return '<div class="sg">' + [['inserted','Akan Ditambah'],['updated','Akan Dikemas Kini'],
+    ['unchanged','Tiada Perubahan'],['skipped','Dilangkau'],['errors','Perlu Semakan']].map(([key, label]) =>
+    '<div class="sc"><div class="sn">' + counts[key] + '</div><div class="sl">' + label + '</div></div>').join('') + '</div>';
+}
+function cpdResultHtml(page) {
+  const result = page.result;
+  if (!result) return '';
+  if (result.kind === 'success') {
+    const c = result.counts;
+    return '<section class="alert as" role="status"><strong>Penyegerakan selesai.</strong>' +
+      '<p>Keputusan yang disahkan: ' + c.inserted + ' ditambah, ' + c.updated + ' dikemas kini, ' +
+      c.unchanged + ' tiada perubahan, ' + c.skipped + ' dilangkau, ' + c.errors + ' perlu semakan.</p>' +
+      '<p>Buat pratonton baharu untuk menyemak keadaan terkini.</p></section>';
+  }
+  const uncertain = result.kind === 'uncertain';
+  const message = result.code ? CPD_MESSAGES[result.code] :
+    'Keputusan penyegerakan tidak dapat dipastikan. Permintaan mungkin masih diproses atau perubahan mungkin telah disimpan. Tiada percubaan semula automatik akan dibuat.';
+  return '<section class="alert ' + (uncertain ? 'aw' : 'ad') + '" role="alert"><strong>' +
+    (uncertain ? 'Keputusan Penyegerakan Tidak Pasti' : 'Penyegerakan Tidak Dapat Diteruskan') + '</strong><p>' + message + '</p>' +
+    (!page.forbidden && page.courseId ? '<div class="cpd-actions"><button class="btn btn-secondary" onclick="cpdPreview()"' +
+      (cpdRun || page.phase === 'courses' ? ' disabled' : '') + '>Buat Pratonton Baharu</button></div>' : '') + '</section>';
+}
+function cpdRender() {
+  const page = cpdPage;
+  if (!page || page.token !== S.token || window.location.hash.split('?')[0] !== '#admin-cpd') return;
+  const course = cpdSelectedCourse(page);
+  if (!course && page.courseId && page.phase !== 'courses') {
+    cpdInvalidate(page);
+    page.courseId = '';
+    page.phase = 'ready';
+  }
+  const busy = !!cpdRun, preview = page.preview;
+  const disabled = busy || page.forbidden || page.phase === 'courses';
+  let body = '<div class="ph"><div><h2>Pengurusan CPD</h2><p class="cpd-note">Semak dan segerakkan rekod CPD daripada sumber yang telah dikonfigurasi.</p></div></div>' +
+    '<div class="cpd-stack"><section class="card"><h3>1. Pratonton Penyegerakan</h3>' +
+    '<div class="fg"><label for="cpd-course">Kursus</label><select id="cpd-course" onchange="cpdChangeCourse(this.value)"' + (disabled ? ' disabled' : '') + '>' +
+    '<option value="">Pilih kursus</option>' + page.courses.map(item => '<option value="' + escHtml(item.courseId) + '"' +
+      (item.courseId === page.courseId ? ' selected' : '') + '>' + escHtml(item.namaKursus + (item.tarikhMulaInput ? ' (' + formatTarikhPaparan(item.tarikhMulaInput) + ')' : '')) + '</option>').join('') +
+    '</select></div><p class="cpd-note"><strong>Skop:</strong> Semua sumber CPD aktif bagi kursus yang dipilih.</p>' +
+    '<p class="cpd-note" role="status">' + (page.phase === 'courses' ? 'Memuatkan senarai kursus...' :
+      !page.courses.length ? 'Tiada kursus tersedia.' : !page.courseId ? 'Pilih kursus untuk membuat pratonton.' : '') + '</p>' +
+    '<div class="cpd-actions"><button id="cpd-preview" class="btn btn-primary" onclick="cpdPreview()"' +
+      (disabled || !page.courseId || page.phase === 'loading' ? ' disabled' : '') + '>Pratonton Penyegerakan</button>' +
+    '<button class="btn btn-secondary" onclick="cpdLoadCourses()"' + (busy || page.forbidden || page.phase === 'courses' ? ' disabled' : '') + '>Muat Semula Kursus</button></div></section>' +
+    '<div id="cpd-result" aria-live="polite">' + cpdResultHtml(page) + '</div>';
+  if (busy) body += '<div class="alert ai" role="status">Penyegerakan sedang menunggu keputusan. Jangan hantar permintaan sekali lagi.</div>';
+  if (page.phase === 'loading') body += '<div class="alert ai" role="status">Memuatkan pratonton CPD...</div>';
+  if (preview) {
+    const blocked = !page.canExecute || preview.counts.errors > 0;
+    const noChanges = preview.counts.inserted + preview.counts.updated === 0;
+    body += '<section class="card"><h3>Ringkasan Pratonton</h3><p class="cpd-note">Bilangan ini merujuk kepada rekod CPD atau isu semakan, bukan bilangan individu unik.</p>' +
+      cpdSummaryHtml(preview.counts) + '</section><section class="card"><h3>Tindakan yang Dicadangkan</h3>' +
+      '<div class="tw" tabindex="0" role="region" aria-label="Jadual tindakan CPD, boleh ditatal mendatar"><table><thead><tr>' +
+      ['Sumber','Baris Data','Kategori','No. KP Bertopeng','Tindakan','Keterangan'].map(label => '<th scope="col">' + label + '</th>').join('') + '</tr></thead><tbody>' +
+      (preview.rows.length ? preview.rows.map(row => '<tr><td>Sumber ' + row.source + '</td><td>' +
+        (row.row === 0 ? 'Semakan sumber/sistem' : row.row) + '</td><td>' + (row.kategori || '—') + '</td><td>' +
+        (row.row === 0 ? '—' : escHtml(row.maskedNoKp)) + '</td><td><span class="badge ' +
+        (row.status === 'error' ? 'bt' : row.status === 'unchanged' ? 'bb' : 'ba') + '">' + CPD_ACTIONS[row.status] +
+        '</span></td><td>' + (CPD_ROW_MESSAGES[row.code] || 'Maklumat semakan tidak dikenali. Sila rujuk pentadbir.') + '</td></tr>').join('') :
+        '<tr><td colspan="6">Tiada rekod CPD dalam pratonton ini.</td></tr>') + '</tbody></table></div></section>' +
+      '<section class="card"><h3>2. Sahkan Penyegerakan</h3><p>Kursus: <strong>' + escHtml(course ? course.namaKursus : '') + '</strong></p>' +
+      '<p class="cpd-note">' + preview.counts.inserted + ' rekod akan ditambah dan ' + preview.counts.updated + ' rekod akan dikemas kini.</p>' +
+      (blocked ? '<div class="alert ad" role="status">Pratonton memerlukan semakan. Penyegerakan tidak dibenarkan.</div>' :
+        noChanges ? '<div class="alert ai" role="status">Tiada perubahan CPD yang perlu disegerakkan.</div>' : '') +
+      '<label class="cpd-confirm" for="cpd-confirm"><input id="cpd-confirm" type="checkbox" onchange="cpdSetConfirmed(this.checked)"' +
+      (page.confirmed ? ' checked' : '') + (busy || blocked || noChanges || page.forbidden ? ' disabled' : '') +
+      '>Saya telah menyemak pratonton dan mengesahkan penyegerakan bagi kursus ini.</label>' +
+      '<button id="cpd-execute" class="btn btn-primary" onclick="cpdExecute()"' + (!cpdCanExecute() ? ' disabled' : '') +
+      '>Sahkan dan Segerakkan</button></section>';
+  }
+  setView(shell('Pengurusan CPD', 'admin-cpd', body + '</div>'));
+}
+
 /* AUTH */
 function pgLogin(){
   const notice=authNotice;
