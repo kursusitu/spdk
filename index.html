@@ -150,6 +150,16 @@ tr:hover td{background:#f9fafb}
 .cpd-stack .alert{margin:0;line-height:1.6;overflow-wrap:anywhere}
 .cpd-stack .btn{white-space:normal;min-height:44px}
 .cpd-stack [tabindex]:focus-visible,.cpd-stack .btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.course-cpd{max-width:100%;min-width:0;border:1px solid var(--border);border-radius:14px;padding:16px;margin:18px 0;background:#f8fafc;overflow:hidden}
+.course-cpd h3{font-size:16px;margin-bottom:6px}
+.course-cpd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;min-width:0}
+.course-cpd-category{border:1px solid var(--border);border-radius:12px;padding:14px;background:#fff;min-width:0}
+.course-cpd-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;line-height:1.45}
+.course-cpd-check input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--primary)}
+.course-cpd-lock{font-size:12px;line-height:1.5;color:#92400e;margin-top:6px;overflow-wrap:anywhere}
+.course-cpd input[readonly]{background:#f3f4f6;color:#4b5563;border-style:dashed}
+.course-cpd-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px}
+.course-cpd-summary>div{border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;overflow-wrap:anywhere}
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
@@ -173,7 +183,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.10';
+const APP_VERSION='1.0.11';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -192,7 +202,7 @@ let authNotice='';
 const PUBLIC_API_ACTIONS=new Set(['login','daftarAkaun','lupaKataLaluan','resetKataLaluan','verifyCert','getBahagianUnit']);
 const AUTH_EXPIRY_EXEMPT_ACTIONS=new Set(['renewSession','logKeluar']);
 function saveAuth(t,r,n){S.token=t;S.role=r;S.nama=n;authExpiryHandling=false;authNotice='';localStorage.setItem('spdk_token',t);localStorage.setItem('spdk_role',r);localStorage.setItem('spdk_nama',n)}
-function clearAuth(){cpdLeave();S={token:'',role:'',nama:''};['spdk_token','spdk_role','spdk_nama'].forEach(k=>localStorage.removeItem(k))}
+function clearAuth(){cpdLeave();kuCloseCourseModal();S={token:'',role:'',nama:''};['spdk_token','spdk_role','spdk_nama'].forEach(k=>localStorage.removeItem(k))}
 function isPublicApiAction(action){return PUBLIC_API_ACTIONS.has(action)}
 function isSessionExpiredResponse(result){
   if(!result||result.success!==false)return false;
@@ -487,6 +497,11 @@ var cpdPage = null;
 var cpdRun = null;
 const CPD_TIMEOUT_MS = 60000;
 const CPD_MESSAGES = Object.freeze({
+  CPD_CONFIG_INVALID: 'Tetapan CPD tidak sah. Semak nombor dan mata CPD.',
+  CPD_CONFIG_CONFLICT: 'Tetapan CPD telah berubah. Muat semula kursus dan cuba semula.',
+  CPD_CONFIG_NUMBER_LOCKED: 'No. CPD telah digunakan pada rekod sedia ada dan tidak boleh ditukar melalui suntingan biasa.',
+  CPD_MIXED_SOURCE_MODE: 'Kursus ini mempunyai konflik antara sumber CPD lama dan tetapan CPD baharu.',
+  CPD_MANAGED_SOURCE_NOT_READY: 'Maklumat dalaman untuk menyediakan calon CPD belum lengkap.',
   CPD_INVALID_PAYLOAD: 'Permintaan CPD tidak sah.',
   CPD_INVALID_COURSE: 'CourseID tidak sah. Sila pilih kursus semula.',
   CPD_FINGERPRINT_REQUIRED: 'Pratonton CPD yang sah diperlukan.',
@@ -520,6 +535,30 @@ const CPD_ACTIONS = Object.freeze({
   skipped: 'Dilangkau', error: 'Perlu Semakan'
 });
 function cpdOwn(object, key) { return Object.prototype.hasOwnProperty.call(object, key); }
+function cpdNormalizeConfig(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { mode:'legacy', peserta:null, penceramah:null, revision:0 };
+  if (!['legacy','disabled','managed'].includes(value.mode) || !Number.isSafeInteger(value.revision) || value.revision < 0) return null;
+  function category(item) {
+    if (item === null) return null;
+    if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.noCpd !== 'string' ||
+        typeof item.points !== 'number' || !Number.isFinite(item.points) || item.points <= 0) return undefined;
+    const noCpd=item.noCpd.trim().toUpperCase();
+    return /^[A-Z0-9]+CPD-\d{4}-\d+$/.test(noCpd) && noCpd.length <= 256 ? {noCpd,points:item.points} : undefined;
+  }
+  const peserta=category(value.peserta),penceramah=category(value.penceramah);
+  if(peserta===undefined||penceramah===undefined)return null;
+  if(value.mode==='legacy'&&(peserta||penceramah||value.revision!==0))return null;
+  if(value.mode==='managed'&&!peserta&&!penceramah)return null;
+  return{mode:value.mode,peserta,penceramah,revision:value.revision};
+}
+function cpdConfigSummaryHtml(config) {
+  const c=config||{mode:'legacy',peserta:null,penceramah:null,revision:0};
+  if(c.mode==='legacy')return '<div class="alert ai"><strong>Mode: Sumber CPD sedia ada</strong><p class="cpd-note">Kursus ini menggunakan sumber CPD luaran yang telah dikonfigurasi.</p></div>';
+  if(c.mode==='disabled')return '<div class="alert ai"><strong>Mode: CPD dinyahaktifkan</strong><p class="cpd-note">Tiada calon CPD terurus akan disediakan untuk konfigurasi ini.</p></div>';
+  function category(label,item){return '<div><strong>'+label+'</strong><div class="cpd-note">'+(item?'No. CPD: '+escHtml(item.noCpd)+'<br>Mata CPD: '+escHtml(String(item.points)):'Tidak dikonfigurasi')+'</div></div>';}
+  return '<div class="course-cpd-summary">'+category('Peserta',c.peserta)+category('Penceramah',c.penceramah)+'</div>';
+}
+function cpdReadinessMessage(value){return value==='ready'?'Sedia untuk pratonton penyegerakan.':value==='disabled'?'CPD kursus ini dinyahaktifkan.':value==='no_candidates'?'Tiada calon CPD yang layak direkodkan untuk konfigurasi semasa.':'';}
 function cpdAllowed() { return !!S.token && ['admin','superadmin'].includes(S.role); }
 function cpdInvalidate(page, keepCourseLoad = false) {
   if (!keepCourseLoad) page.generation++;
@@ -563,7 +602,10 @@ function cpdPreviewData(result, courseId) {
     });
   }
   // Keep only the public projection, never arbitrary response properties.
-  return { courseId: courseId, fingerprint: result.fingerprint, counts: counts, rows: rows };
+  const readiness=['ready','disabled','no_candidates'].includes(result.readiness)?result.readiness:'';
+  const config=result.cpdConfig===undefined?null:cpdNormalizeConfig(result.cpdConfig);
+  if(result.cpdConfig!==undefined&&!config)return null;
+  return { courseId: courseId, fingerprint: result.fingerprint, counts: counts, rows: rows, readiness, cpdConfig:config };
 }
 function cpdSelectedCourse(page) {
   return page && page.courses.find(course => course.courseId === page.courseId && course.namaKursus.trim());
@@ -572,7 +614,7 @@ function cpdCanExecute() {
   const page = cpdPage, preview = page && page.preview;
   return !!(page && cpdAllowed() && !page.forbidden && !cpdRun && page.phase === 'preview' &&
     preview && cpdSelectedCourse(page) && page.courseId === preview.courseId && page.canExecute === true &&
-    preview.counts.errors === 0 && page.confirmed && preview.counts.inserted + preview.counts.updated > 0);
+    preview.counts.errors === 0 && !['disabled','no_candidates'].includes(preview.readiness) && page.confirmed && preview.counts.inserted + preview.counts.updated > 0);
 }
 function cpdSetConfirmed(checked) {
   if (!cpdPage || cpdRun || !cpdPage.preview || cpdPage.forbidden) return;
@@ -624,7 +666,9 @@ async function cpdLoadCourses(initial = false) {
         typeof course.namaKursus !== 'string')) { cpdFailure(page, null); return; }
     page.courses = result.kursus.map(course => ({ courseId: course.courseId, namaKursus: course.namaKursus,
       tarikhMulaInput: typeof course.tarikhMulaInput === 'string' && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(course.tarikhMulaInput)
-        ? course.tarikhMulaInput : '' }));
+        ? course.tarikhMulaInput : '', cpdConfig:cpdNormalizeConfig(course.cpdConfig),
+      cpdNumberLocked:{peserta:!!(course.cpdNumberLocked&&course.cpdNumberLocked.peserta),penceramah:!!(course.cpdNumberLocked&&course.cpdNumberLocked.penceramah)} }));
+    if(page.courses.some(course=>!course.cpdConfig)){cpdFailure(page,null);return;}
     if (!cpdSelectedCourse(page)) page.courseId = '';
     page.phase = 'ready';
   } catch (_) {
@@ -731,7 +775,8 @@ function cpdRender() {
     '<div class="fg"><label for="cpd-course">Kursus</label><select id="cpd-course" onchange="cpdChangeCourse(this.value)"' + (disabled ? ' disabled' : '') + '>' +
     '<option value="">Pilih kursus</option>' + page.courses.map(item => '<option value="' + escHtml(item.courseId) + '"' +
       (item.courseId === page.courseId ? ' selected' : '') + '>' + escHtml(item.namaKursus + (item.tarikhMulaInput ? ' (' + formatTarikhPaparan(item.tarikhMulaInput) + ')' : '')) + '</option>').join('') +
-    '</select></div><p class="cpd-note"><strong>Skop:</strong> Semua sumber CPD aktif bagi kursus yang dipilih.</p>' +
+    '</select></div>' + (course?'<div id="cpd-config-summary">'+cpdConfigSummaryHtml(course.cpdConfig)+'</div>':'') +
+    '<p class="cpd-note"><strong>Skop:</strong> '+(course&&course.cpdConfig.mode==='legacy'?'Pratonton membaca sumber CPD luaran aktif yang dikonfigurasi.':'Pratonton menggunakan tetapan rasmi CPD kursus semasa.')+'</p>' +
     '<p class="cpd-note" role="status">' + (page.phase === 'courses' ? 'Memuatkan senarai kursus...' :
       !page.courses.length ? 'Tiada kursus tersedia.' : !page.courseId ? 'Pilih kursus untuk membuat pratonton.' : '') + '</p>' +
     '<div class="cpd-actions"><button id="cpd-preview" class="btn btn-primary" onclick="cpdPreview()"' +
@@ -741,9 +786,10 @@ function cpdRender() {
   if (busy) body += '<div class="alert ai" role="status">Penyegerakan sedang menunggu keputusan. Jangan hantar permintaan sekali lagi.</div>';
   if (page.phase === 'loading') body += '<div class="alert ai" role="status">Memuatkan pratonton CPD...</div>';
   if (preview) {
-    const blocked = !page.canExecute || preview.counts.errors > 0;
+    const blocked = !page.canExecute || preview.counts.errors > 0 || ['disabled','no_candidates'].includes(preview.readiness);
     const noChanges = preview.counts.inserted + preview.counts.updated === 0;
-    body += '<section class="card"><h3>Ringkasan Pratonton</h3><p class="cpd-note">Bilangan ini merujuk kepada rekod CPD atau isu semakan, bukan bilangan individu unik.</p>' +
+    const awardConfig=preview.cpdConfig||course.cpdConfig;
+    body += '<section class="card"><h3>Ringkasan Pratonton</h3>'+(preview.readiness?'<div class="alert ai" role="status">'+cpdReadinessMessage(preview.readiness)+'</div>':'')+'<p class="cpd-note">Bilangan ini merujuk kepada rekod CPD atau isu semakan, bukan bilangan individu unik.</p>' +
       cpdSummaryHtml(preview.counts) + '</section><section class="card"><h3>Tindakan yang Dicadangkan</h3>' +
       '<div class="tw" tabindex="0" role="region" aria-label="Jadual tindakan CPD, boleh ditatal mendatar"><table><thead><tr>' +
       ['Sumber','Baris Data','Kategori','No. KP Bertopeng','Tindakan','Keterangan'].map(label => '<th scope="col">' + label + '</th>').join('') + '</tr></thead><tbody>' +
@@ -753,7 +799,7 @@ function cpdRender() {
         (row.status === 'error' ? 'bt' : row.status === 'unchanged' ? 'bb' : 'ba') + '">' + CPD_ACTIONS[row.status] +
         '</span></td><td>' + (CPD_ROW_MESSAGES[row.code] || 'Maklumat semakan tidak dikenali. Sila rujuk pentadbir.') + '</td></tr>').join('') :
         '<tr><td colspan="6">Tiada rekod CPD dalam pratonton ini.</td></tr>') + '</tbody></table></div></section>' +
-      '<section class="card"><h3>2. Sahkan Penyegerakan</h3><p>Kursus: <strong>' + escHtml(course ? course.namaKursus : '') + '</strong></p>' +
+      '<section class="card"><h3>2. Sahkan Penyegerakan</h3><p>Kursus: <strong>' + escHtml(course ? course.namaKursus : '') + '</strong></p><div><strong>Takrif anugerah semasa</strong>'+cpdConfigSummaryHtml(awardConfig)+'</div>' +
       '<p class="cpd-note">' + preview.counts.inserted + ' rekod akan ditambah dan ' + preview.counts.updated + ' rekod akan dikemas kini.</p>' +
       (blocked ? '<div class="alert ad" role="status">Pratonton memerlukan semakan. Penyegerakan tidak dibenarkan.</div>' :
         noChanges ? '<div class="alert ai" role="status">Tiada perubahan CPD yang perlu disegerakkan.</div>' : '') +
@@ -1651,12 +1697,67 @@ function pgAdminKursus(){
     <div id="kuc"><div class="alert ai">Memuatkan...</div></div>`));
   loadKursus();
 }
-var kuKursusRows=[];
+var kuKursusRows=[],kuCoursesGeneration=0,kuCpdModal=null,kuCpdOperationSequence=0;
+const COURSE_CPD_NUMBER=/^[A-Z0-9]+CPD-\d{4}-\d+$/;
+const COURSE_CPD_TIMEOUT_MS=60000;
+function kuCourseConfig(course){return cpdNormalizeConfig(course&&course.cpdConfig);}
+function kuCpdError(result){return result&&result.success===false&&cpdOwn(CPD_MESSAGES,result.code)?CPD_MESSAGES[result.code]:'Permintaan tidak dapat disahkan. Muat semula kursus dan semak keadaan terkini.';}
+function kuCpdCategoryHtml(key,label,item,locked){
+  const enabled=!!item;
+  return `<div class="course-cpd-category"><label class="course-cpd-check" for="mkcpd-${key}-on"><input id="mkcpd-${key}-on" type="checkbox" onchange="kuCpdTouch()"${enabled?' checked':''}><span>Aktifkan CPD ${label}</span></label><div id="mkcpd-${key}-fields" style="display:${enabled?'block':'none'};margin-top:12px"><div class="fg"><label for="mkcpd-${key}-no">No. CPD</label><input id="mkcpd-${key}-no" maxlength="256" value="${escHtml(item?item.noCpd:'')}" oninput="kuCpdTouch()"${locked?' readonly aria-readonly="true"':''}></div><div class="fg"><label for="mkcpd-${key}-points">Mata CPD</label><input id="mkcpd-${key}-points" type="number" min="0" step="any" value="${item?escHtml(String(item.points)):''}" oninput="kuCpdTouch()"></div>${locked?'<p class="course-cpd-lock">No. CPD ini telah digunakan pada rekod CPD dan tidak boleh ditukar melalui suntingan biasa.</p>':''}</div></div>`;
+}
+function kuCpdFormHtml(course,completed){
+  const config=course?kuCourseConfig(course):{mode:'disabled',peserta:null,penceramah:null,revision:0};
+  if(!config)return '<div class="alert ad">Tetapan CPD kursus tidak dapat dibaca. Muat semula senarai kursus.</div>';
+  if(config.mode==='legacy')return '<section class="course-cpd" id="course-cpd-config"><h3>CPD Kursus</h3>'+cpdConfigSummaryHtml(config)+'</section>';
+  const enabled=config.mode==='managed';const locks=course&&course.cpdNumberLocked||{};
+  return `<section class="course-cpd" id="course-cpd-config" aria-labelledby="course-cpd-title"><h3 id="course-cpd-title">CPD Kursus</h3><p class="cpd-note">No. CPD dan mata CPD mesti diperoleh daripada pihak yang berkuasa. Kelayakan individu ditentukan oleh backend.</p><label class="course-cpd-check" for="mkcpd-on"><input id="mkcpd-on" type="checkbox" onchange="kuCpdTouch()"${enabled?' checked':''}><span>Kursus mempunyai CPD</span></label><div id="mkcpd-categories" style="display:${enabled?'block':'none'};margin-top:14px"><div class="course-cpd-grid">${kuCpdCategoryHtml('peserta','Peserta',config.peserta,!!locks.peserta)}${kuCpdCategoryHtml('penceramah','Penceramah',config.penceramah,!!locks.penceramah)}</div></div>${completed?'<p class="cpd-note" style="margin-top:12px">Hanya tetapan CPD kursus tamat ini boleh dikemas kini.</p>':''}</section>`;
+}
+function kuCpdTouch(){
+  if(!kuCpdModal||kuCpdModal.legacy)return;kuCpdModal.touched=true;
+  const global=$('mkcpd-on'),categories=$('mkcpd-categories');if(categories)categories.style.display=global&&global.checked?'block':'none';
+  for(const key of ['peserta','penceramah']){const onEl=$('mkcpd-'+key+'-on'),fields=$('mkcpd-'+key+'-fields');if(fields)fields.style.display=global&&global.checked&&onEl&&onEl.checked?'block':'none';}
+}
+function kuReadCpdPayload(){
+  if(!kuCpdModal)return{error:'Tetapan CPD tidak tersedia.'};
+  if(kuCpdModal.legacy)return{omit:true};
+  const global=$('mkcpd-on');if(!global||!global.checked)return{config:{mode:'disabled',peserta:null,penceramah:null}};
+  function read(key,label){
+    const enabled=$('mkcpd-'+key+'-on').checked;if(!enabled)return{value:null};
+    const noEl=$('mkcpd-'+key+'-no'),pointsEl=$('mkcpd-'+key+'-points');
+    const noCpd=String(noEl.value||'').trim().toUpperCase(),raw=String(pointsEl.value||'').trim(),points=Number(raw);
+    if(!noCpd)return{error:'No. CPD '+label+' wajib diisi.'};
+    if(noCpd.length>256||!COURSE_CPD_NUMBER.test(noCpd))return{error:'Format No. CPD '+label+' tidak sah.'};
+    if(!raw)return{error:'Mata CPD '+label+' wajib diisi.'};
+    if(!Number.isFinite(points)||points<=0)return{error:'Mata CPD '+label+' mesti nombor melebihi 0.'};
+    noEl.value=noCpd;return{value:{noCpd,points}};
+  }
+  const peserta=read('peserta','Peserta');if(peserta.error)return peserta;
+  const penceramah=read('penceramah','Penceramah');if(penceramah.error)return penceramah;
+  if(!peserta.value&&!penceramah.value)return{error:'Aktifkan sekurang-kurangnya satu kategori CPD.'};
+  return{config:{mode:'managed',peserta:peserta.value,penceramah:penceramah.value}};
+}
+function kuCloseCourseModal(){
+  const state=kuCpdModal;
+  if(state){state.activeOperation=0;state.closed=true;kuCpdModal=null;}
+  const modal=$('mk');if(modal)modal.remove();
+  loading(false);
+}
+function kuStartCpdOperation(state){
+  const operation={id:++kuCpdOperationSequence,state,modal:state.modal,token:S.token,courseId:state.courseId,revision:state.revision};
+  state.activeOperation=operation.id;
+  return operation;
+}
+function kuCpdOperationCurrent(operation){
+  return !!operation&&kuCpdModal===operation.state&&!operation.state.closed&&
+    operation.state.activeOperation===operation.id&&operation.state.modal===operation.modal&&$('mk')===operation.modal&&
+    S.token===operation.token&&operation.state.courseId===operation.courseId&&operation.state.revision===operation.revision;
+}
 async function loadKursus(){
   try{
     const r=await api('getSenaraiKursus');
     const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
-    kuKursusRows=rows;
+    kuKursusRows=rows;kuCoursesGeneration++;
     $('kuc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama Kursus</th><th>Tarikh</th><th>Tempat</th><th>Peserta</th><th>Status</th><th></th></tr></thead><tbody>
       ${rows.map((k,i)=>{
         const statusAsal=k.statusAsal||k.status||'aktif';
@@ -1664,7 +1765,7 @@ async function loadKursus(){
         const namaEsc=String(k.namaKursus||'').replace(/'/g,'');
         const peserta=k.hadPeserta==null?`${k.jumlahPeserta||0}`:`${k.jumlahPeserta||0} / ${k.hadPeserta}<div style="font-size:12px;color:var(--muted)">Baki ${k.bakiTempat} tempat</div>`;
         return `<tr><td><div style="font-weight:600">${escHtml(k.namaKursus)}</div><div style="font-size:12px;color:var(--muted)">${escHtml(k.penerangan||'')}</div></td><td>${k.tarikhMulaInput||'-'}${k.tarikhTamatInput&&k.tarikhTamatInput!==k.tarikhMulaInput?' - '+k.tarikhTamatInput:''}<div style="font-size:12px;color:var(--muted)">${k.masaMula&&k.masaTamat?escHtml(k.masaMula+' - '+k.masaTamat):''}</div></td><td>${escHtml(k.tempat||'-')}</td><td>${peserta}</td><td>${badge(k.status||'aktif')}</td>
-      <td><div style="display:flex;gap:6px;flex-wrap:wrap">${canEdit?`<button class="btn btn-secondary btn-sm" onclick="modalKursus(${i})">Edit</button>`:''}<button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.courseId}','${namaEsc}')">Batal</button></div></td></tr>`;
+      <td><div style="display:flex;gap:6px;flex-wrap:wrap">${canEdit?`<button class="btn btn-secondary btn-sm" onclick="modalKursus(${i})">Edit</button>`:''}${statusAsal==='tamat'&&['admin','superadmin'].includes(S.role)?`<button class="btn btn-secondary btn-sm" onclick="modalTetapanCpd(${i})">Tetapan CPD</button>`:''}${statusAsal==='aktif'||statusAsal==='penuh'?`<button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.courseId}','${namaEsc}')">Batal</button>`:''}</div></td></tr>`;
       }).join('')}
     </tbody></table></div>`:'<div class="alert ai">Tiada kursus.</div>';
   }catch(e){$('kuc').innerHTML='<div class="alert ad">Ralat.</div>'}
@@ -1680,6 +1781,10 @@ function modalKursus(idx){
   const editMode=Number.isInteger(idx);
   const k=editMode?kuKursusRows[idx]:null;
   if(editMode&&!k){toast('Kursus tidak dijumpai.','danger');return}
+  const config=editMode?kuCourseConfig(k):{mode:'disabled',peserta:null,penceramah:null,revision:0};
+  if(!config){toast('Tetapan CPD kursus tidak dapat dibaca.','danger');return}
+  kuCloseCourseModal();
+  kuCpdModal={index:editMode?idx:null,courseId:editMode?k.courseId:'',generation:kuCoursesGeneration,revision:config.revision,legacy:config.mode==='legacy',touched:false,busy:false,completed:false,closed:false,activeOperation:0,modal:null};
   const m=document.createElement('div');m.className='modal-ov';m.id='mk';
   m.innerHTML=`<div class="modal" style="max-width:620px;max-height:92vh;overflow-y:auto">
     <div class="modal-title">${editMode?'Kemaskini Kursus':'Tambah Kursus Baharu'}</div>
@@ -1708,12 +1813,13 @@ function modalKursus(idx){
       <div class="fg"><label>Peserta Berdaftar</label><input value="${k.jumlahPeserta||0}" disabled></div>
       <div class="fg"><label>Status</label><input value="${escHtml(k.status||'aktif')}" disabled></div>
     </div>`:''}
+    ${kuCpdFormHtml(k,false)}
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-      <button class="btn btn-secondary" onclick="document.getElementById('mk').remove()">Batal</button>
+      <button class="btn btn-secondary" onclick="kuCloseCourseModal()">Batal</button>
       <button class="btn btn-primary" id="mk-btn-save" onclick="saveKursus(${editMode?idx:''})">${editMode?'Simpan Perubahan':'Tambah Kursus'}</button>
     </div>
   </div>`;
-  document.body.appendChild(m);
+  kuCpdModal.modal=m;document.body.appendChild(m);
   if(editMode){
     $('mkn').value=k.namaKursus||'';
     $('mkp').value=k.penerangan||'';
@@ -1727,9 +1833,22 @@ function modalKursus(idx){
     $('mkhp').value=k.hadPeserta==null?'':k.hadPeserta;
   }
 }
+function modalTetapanCpd(idx){
+  if(!['admin','superadmin'].includes(S.role))return;
+  const k=kuKursusRows[idx],status=k&&(k.statusAsal||k.status);
+  if(!k||status!=='tamat')return;
+  const config=kuCourseConfig(k);if(!config){toast('Tetapan CPD kursus tidak dapat dibaca.','danger');return}
+  kuCloseCourseModal();
+  kuCpdModal={index:idx,courseId:k.courseId,generation:kuCoursesGeneration,revision:config.revision,legacy:config.mode==='legacy',touched:false,busy:false,completed:true,closed:false,activeOperation:0,modal:null};
+  const m=document.createElement('div');m.className='modal-ov';m.id='mk';m.innerHTML=`<div class="modal" style="max-width:620px;max-height:92vh;overflow-y:auto"><div class="modal-title">Tetapan CPD — ${escHtml(k.namaKursus)}</div><div id="mka" aria-live="polite"></div>${kuCpdFormHtml(k,true)}<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="kuCloseCourseModal()">Batal</button>${config.mode==='legacy'?'':`<button class="btn btn-primary" id="mk-btn-save" onclick="saveTetapanCpd()">Simpan Tetapan CPD</button>`}</div></div>`;kuCpdModal.modal=m;document.body.appendChild(m);
+}
 async function saveKursus(idx){
   const editMode=Number.isInteger(idx);
   const k=editMode?kuKursusRows[idx]:null;
+  if(!kuCpdModal||kuCpdModal.busy||kuCpdModal.completed||kuCpdModal.generation!==kuCoursesGeneration||
+      (editMode&&(kuCpdModal.courseId!==k?.courseId||kuCpdModal.revision!==kuCourseConfig(k)?.revision))){
+    if($('mka'))$('mka').innerHTML='<div class="alert ad">Maklumat kursus telah berubah. Muat semula kursus dan semak semula.</div>';return;
+  }
   const namaKursus=$('mkn').value.trim();
   const penerangan=$('mkp').value.trim();
   const tarikhMula=$('mkm').value;
@@ -1754,8 +1873,11 @@ async function saveKursus(idx){
     $('mka').innerHTML='<div class="alert ad">Had peserta tidak boleh melebihi 10000.</div>';
     return;
   }
+  const cpd=kuReadCpdPayload();
+  if(cpd.error){$('mka').innerHTML='<div class="alert ad" role="alert">'+escHtml(cpd.error)+'</div>';const first=$('course-cpd-config');if(first&&first.focus)first.focus();return;}
   const btn=$('mk-btn-save');
-  btn.disabled=true; loading(true);
+  const state=kuCpdModal,operation=kuStartCpdOperation(state);
+  state.busy=true;btn.disabled=true; loading(true);
   try{
     const payload={
       namaKursus, penerangan, tarikhMula, tarikhTamat,
@@ -1763,11 +1885,29 @@ async function saveKursus(idx){
       tarikhMulaDaftar:$('mkrd').value, tarikhTutupDaftar:$('mktd').value
     };
     if(editMode)payload.courseId=k.courseId;
-    const r=await api(editMode?'kemaskinikursus':'ciptaKursus',payload);
-    if(r.success){toast(editMode?'Kursus berjaya dikemaskini.':'Kursus berjaya ditambah.','success');document.getElementById('mk').remove();loadKursus()}
-    else $('mka').innerHTML=`<div class="alert ad">${r.message||'Gagal.'}</div>`;
-  }catch(e){toast('Ralat sambungan.','danger')}
-  loading(false); btn.disabled=false;
+    if(!editMode){payload.cpdConfig=cpd.config;}
+    else if(!cpd.omit&&kuCpdModal.touched){payload.cpdConfig=cpd.config;payload.expectedCpdRevision=kuCpdModal.revision;}
+    const r=await apiWithTimeout(editMode?'kemaskinikursus':'ciptaKursus',payload,COURSE_CPD_TIMEOUT_MS);
+    if(!kuCpdOperationCurrent(operation))return;
+    if(r.success){toast(editMode?'Kursus berjaya dikemaskini.':'Kursus berjaya ditambah.','success');kuCloseCourseModal();loadKursus()}
+    else{$('mka').innerHTML='<div class="alert ad" role="alert">'+escHtml(kuCpdError(r))+'</div>';if(r&&r.code==='CPD_CONFIG_CONFLICT')state.generation=-1;}
+  }catch(e){if(!kuCpdOperationCurrent(operation))return;$('mka').innerHTML='<div class="alert aw" role="alert">Keputusan simpanan tidak dapat dipastikan. Tiada percubaan semula automatik dibuat. Muat semula kursus dan semak sebelum cuba semula.</div>';state.generation=-1;}
+  finally{if(kuCpdOperationCurrent(operation)){loading(false);state.busy=false;state.activeOperation=0;if(btn)btn.disabled=state.generation!==kuCoursesGeneration;}}
+}
+async function saveTetapanCpd(){
+  const state=kuCpdModal,k=state&&kuKursusRows[state.index];
+  if(!state||state.busy||!state.completed||state.legacy||!['admin','superadmin'].includes(S.role)||
+      state.generation!==kuCoursesGeneration||!k||state.courseId!==k.courseId||state.revision!==kuCourseConfig(k)?.revision||
+      (k.statusAsal||k.status)!=='tamat'){if($('mka'))$('mka').innerHTML='<div class="alert ad">Maklumat kursus telah berubah. Muat semula kursus dan semak semula.</div>';return;}
+  const cpd=kuReadCpdPayload();if(cpd.error){$('mka').innerHTML='<div class="alert ad" role="alert">'+escHtml(cpd.error)+'</div>';return;}
+  const btn=$('mk-btn-save'),operation=kuStartCpdOperation(state);state.busy=true;btn.disabled=true;loading(true);
+  try{
+    const r=await apiWithTimeout('updateCourseCpdConfig',{courseId:state.courseId,expectedCpdRevision:state.revision,cpdConfig:cpd.config},COURSE_CPD_TIMEOUT_MS);
+    if(!kuCpdOperationCurrent(operation))return;
+    if(r&&r.success){toast('Tetapan CPD berjaya dikemaskini.','success');kuCloseCourseModal();loadKursus();}
+    else{$('mka').innerHTML='<div class="alert ad" role="alert">'+escHtml(kuCpdError(r))+'</div>';if(r&&r.code==='CPD_CONFIG_CONFLICT')state.generation=-1;}
+  }catch(e){if(!kuCpdOperationCurrent(operation))return;$('mka').innerHTML='<div class="alert aw" role="alert">Keputusan simpanan tidak dapat dipastikan. Tiada percubaan semula automatik dibuat. Muat semula kursus dan semak sebelum cuba semula.</div>';state.generation=-1;}
+  finally{if(kuCpdOperationCurrent(operation)){loading(false);state.busy=false;state.activeOperation=0;if(btn)btn.disabled=state.generation!==kuCoursesGeneration;}}
 }
 var apAllData=[];
 var apTabAktif='semua';

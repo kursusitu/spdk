@@ -148,7 +148,7 @@ test('course request and labels use exact contract, include completed courses an
   assert.equal(h.calls[0].options.headers['Content-Type'], 'text/plain');
   assert.match(h.output(), /&lt;img src=x onerror=alert\(1\)&gt; &amp; &quot;Alpha&quot;/);
   assert.match(h.output(), /03\/09\/2026/);
-  assert.match(h.output(), /Semua sumber CPD aktif bagi kursus yang dipilih/);
+  assert.match(h.output(), /Pratonton menggunakan tetapan rasmi CPD kursus semasa/);
   assert.equal(h.nodes['cpd-preview'].disabled, true);
   h.context.cpdChangeCourse(COURSE_A);
   assert.equal(h.nodes['cpd-preview'].disabled, false);
@@ -224,7 +224,7 @@ test('unknown row code and unsafe categories/masks do not expose raw values', as
   assert.match(h.output(), /\*\*\*\*\*\*-\*\*-\*\*\*\*/);
   assert.match(h.output(), /Maklumat semakan tidak dikenali/);
   assertPrivate(h, secrets);
-  assert.deepEqual(Object.keys(h.page().preview).sort(), ['counts','courseId','fingerprint','rows']);
+  assert.deepEqual(Object.keys(h.page().preview).sort(), ['counts','courseId','cpdConfig','fingerprint','readiness','rows']);
   assert.deepEqual(Object.keys(h.page().preview.rows[0]).sort(), ['code','kategori','maskedNoKp','row','source','status']);
 });
 test('confirmation starts unchecked and execute requires a valid current preview', async () => {
@@ -364,6 +364,9 @@ for (const mode of ['navigation', 'direct hash navigation', 'logout', 'session e
   });
 }
 const errorMessages = {
+  CPD_CONFIG_INVALID: 'Tetapan CPD tidak sah', CPD_CONFIG_CONFLICT: 'Tetapan CPD telah berubah',
+  CPD_CONFIG_NUMBER_LOCKED: 'No. CPD telah digunakan', CPD_MIXED_SOURCE_MODE: 'konflik antara sumber CPD lama',
+  CPD_MANAGED_SOURCE_NOT_READY: 'Maklumat dalaman untuk menyediakan calon CPD belum lengkap',
   CPD_INVALID_PAYLOAD: 'Permintaan CPD tidak sah', CPD_INVALID_COURSE: 'CourseID tidak sah',
   CPD_FINGERPRINT_REQUIRED: 'Pratonton CPD yang sah diperlukan', CPD_AUTH_REQUIRED: 'Sesi',
   CPD_FORBIDDEN: 'Akses ditolak', CPD_COURSE_NOT_FOUND: 'Kursus tidak dijumpai',
@@ -654,4 +657,22 @@ test('PWA versions stay synchronized for the CPD release', () => {
   const worker = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
   assert.ok(html.includes("const APP_VERSION='" + version + "'"));
   assert.ok(worker.includes("spdk-cache-v" + version + "'"));
+});
+
+test('course selection displays legacy, disabled and managed award summaries', async()=>{
+  const configs=[
+    {config:{mode:'legacy',peserta:null,penceramah:null,revision:0},text:/Sumber CPD sedia ada/},
+    {config:{mode:'disabled',peserta:null,penceramah:null,revision:2},text:/CPD dinyahaktifkan/},
+    {config:{mode:'managed',peserta:{noCpd:'DVSCPD-2026-123',points:4},penceramah:null,revision:3},text:/DVSCPD-2026-123/},
+    {config:{mode:'managed',peserta:null,penceramah:{noCpd:'VETCPD-2026-456',points:2},revision:4},text:/VETCPD-2026-456/},
+    {config:{mode:'managed',peserta:{noCpd:'DVSCPD-2026-123',points:4},penceramah:{noCpd:'VETCPD-2026-456',points:2},revision:5},text:/Mata CPD: 2/}
+  ];
+  for(const item of configs){const h=harness({fetchImpl:()=>({success:true,kursus:[{courseId:COURSE_A,namaKursus:'Kursus',cpdConfig:item.config}]})});await h.open();h.context.cpdChangeCourse(COURSE_A);assert.match(h.output(),item.text);if(item.config.mode==='managed'&&(!item.config.peserta||!item.config.penceramah))assert.match(h.output(),/Tidak dikonfigurasi/);}
+});
+for(const readiness of ['ready','disabled','no_candidates'])test('preview renders readiness '+readiness+' and enforces execute gate',async()=>{
+  const cfg={mode:'managed',peserta:{noCpd:'DVSCPD-2026-123',points:4},penceramah:null,revision:3};
+  const h=harness({fetchImpl:body=>body.action==='getSenaraiKursus'?{success:true,kursus:[{courseId:COURSE_A,namaKursus:'Kursus',cpdConfig:cfg}]}:preview({readiness,cpdConfig:cfg})});
+  await h.ready(true);assert.match(h.output(),new RegExp(readiness==='ready'?'Sedia untuk pratonton':readiness==='disabled'?'dinyahaktifkan':'Tiada calon CPD'));
+  assert.match(h.output(),/Takrif anugerah semasa/);assert.match(h.output(),/DVSCPD-2026-123/);assert.match(h.output(),/No\. KP Bertopeng/);
+  await h.context.cpdExecute();assert.equal(executeCalls(h).length,readiness==='ready'?1:0);
 });
