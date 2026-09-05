@@ -57,7 +57,7 @@ mutate('17 no-candidates readiness permits execute',once("!['disabled','no_candi
 mutate('18 award definition omitted',once("<div><strong>Takrif anugerah semasa</strong>'+cpdConfigSummaryHtml(awardConfig)+'</div>",""),'cpd-admin-page.test.cjs',/preview renders readiness ready/);
 mutate('19 CPD-2 confirmation gate removed',once("preview.counts.errors === 0 && !['disabled','no_candidates'].includes(preview.readiness) && page.confirmed &&","preview.counts.errors === 0 && !['disabled','no_candidates'].includes(preview.readiness) &&"),'cpd-admin-page.test.cjs',/confirmation starts unchecked and execute requires/);
 mutate('20 stale fingerprint retained',once("page.preview = null;",""),'cpd-admin-page.test.cjs',/course switch invalidates preview/);
-mutate('21 version and cache mismatch',once("const APP_VERSION='1.0.11'","const APP_VERSION='1.0.10'"),'reporting-page.test.cjs',/consistently versioned at 1\.0\.11/);
+mutate('21 version and cache mismatch',once("const APP_VERSION='1.0.12'","const APP_VERSION='1.0.11'"),'reporting-page.test.cjs',/consistently versioned at 1\.0\.12/);
 mutate('22 mobile containment removed',once("background:#f8fafc;overflow:hidden","background:#f8fafc"),'course-cpd-config.test.cjs',/CPD form remains bounded/);
 mutate('23 post-response identity check removed',all("if(!kuCpdOperationCurrent(operation))return;",""),'course-cpd-config.test.cjs',/stale course success cannot remove or reload/);
 mutate('24 stale final cleanup enabled',all("if(kuCpdOperationCurrent(operation)){loading(false)","if(true){loading(false)"),'course-cpd-config.test.cjs',/stale final cleanup cannot clear/);
@@ -68,3 +68,4 @@ mutate('26 close invalidation defenses removed',source=>source
   .replace("$('mk')===operation.modal&&","true&&"),'course-cpd-config.test.cjs',/stale course success cannot remove or reload/);
 mutate('27 current auth expiry leaves course modal open',once("cpdLeave();kuCloseCourseModal();","cpdLeave();"),'course-cpd-config.test.cjs',/current-token auth expiry closes and invalidates an ordinary course modal/);
 mutate('28 stale auth failure closes replacement modal',once("if(requestToken&&requestToken===S.token)handleExpiredSession();","if(requestToken)handleExpiredSession();"),'course-cpd-config.test.cjs',/actual old-token auth failure preserves replacement session and modal/);
+mutate('29 create incorrectly depends on list generation',once("if(!kuCpdModal||kuCpdModal.busy||kuCpdModal.completed||\n      (editMode&&","if(!kuCpdModal||kuCpdModal.busy||kuCpdModal.completed||kuCpdModal.generation!==kuCoursesGeneration||\n      (editMode&&"),'course-cpd-config.test.cjs',/new managed course survives a completed course-list refresh/);
