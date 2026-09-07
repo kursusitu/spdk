@@ -196,13 +196,13 @@ test('registration month options are ordered by year and month, newest first', (
   assert.ok(options.indexOf('Dis 2025') < options.indexOf('Nov 2025'));
 });
 
-test('PWA application, release metadata and service-worker cache are consistently versioned at 1.0.12', () => {
+test('PWA application, release metadata and service-worker cache are consistently versioned at 1.0.13', () => {
   const app = loadAppScript();
   const appVersion = vm.runInContext('APP_VERSION', app);
   const versionInfo = JSON.parse(fs.readFileSync(path.join(root, 'version.json'), 'utf8'));
   const serviceWorker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 
-  assert.equal(appVersion, '1.0.12');
-  assert.equal(versionInfo.version, '1.0.12');
-  assert.match(serviceWorker, /spdk-cache-v1\.0\.12/);
+  assert.equal(appVersion, '1.0.13');
+  assert.equal(versionInfo.version, '1.0.13');
+  assert.match(serviceWorker, /spdk-cache-v1\.0\.13/);
 });
