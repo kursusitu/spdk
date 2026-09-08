@@ -183,7 +183,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.13';
+const APP_VERSION='1.0.14';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -1145,16 +1145,18 @@ async function ccLoadCourse(){
     CC.rows=r.contributors;CC.course=r.course;
     $('cc-course-detail').textContent=r.course.namaKursus+' | '+formatTarikhPanjang(r.course.tarikhMula)+' – '+formatTarikhPanjang(r.course.tarikhTamat)+' | '+r.course.tempat;
     $('cc-add').disabled=!['aktif','penuh','tamat'].includes(r.course.status);
-    ccRenderRows();ccMessage('Sijil yang dijana kekal mengikut maklumat semasa pengeluaran. Emel ialah notifikasi; PDF diserahkan berasingan.');
+    ccRenderRows();ccMessage('Sijil yang dijana kekal mengikut maklumat semasa pengeluaran. Email contributor menyertakan PDF eSijil dan pautan pengesahan.');
   }catch(e){if(ccCurrent(epoch)&&CC.courseId===id)ccMessage(e.message,true);}
 }
 function ccEmailLabel(r){
   if(!r.certId)return '-';if(!r.email)return 'Tiada Email';
-  return ({berjaya:'Berjaya',gagal:'Gagal',sedang_hantar:'Perlu Semakan'})[r.statusEmel]||'Belum Hantar';
+  if(r.deliveryVersion==='pdf-v1')return ({berjaya:'PDF Dihantar',gagal:'Gagal',sedang_hantar:'Perlu Semakan'})[r.statusEmel]||'Belum Hantar PDF';
+  if(r.statusEmel==='berjaya')return 'Notifikasi dihantar — PDF belum dihantar';
+  return ({gagal:'Gagal',sedang_hantar:'Perlu Semakan'})[r.statusEmel]||'Belum Hantar PDF';
 }
 function ccRenderRows(){
   const el=$('cc-table');if(!el)return;
-  el.innerHTML=CC.rows.length?`<div class="card" style="overflow-x:auto"><table style="width:100%;min-width:720px"><thead><tr><th>Nama</th><th>Peranan</th><th>Tajuk/Sumbangan</th><th>Status Sijil</th><th>Status Email</th><th>Tindakan</th></tr></thead><tbody>${CC.rows.map((r,i)=>`<tr><td>${escHtml(r.nama)}${r.status==='batal'?'<br><span class="badge bb">Dibatalkan</span>':''}</td><td>${escHtml(r.jenisSumbangan)}</td><td>${escHtml(r.tajukSumbangan||'-')}</td><td><span class="badge ${r.certId?'bl':'bm'}">${r.certId?'Dijana':'Belum Dijana'}</span></td><td>${escHtml(ccEmailLabel(r))}${r.tarikhEmel?'<br><small>'+escHtml(new Date(r.tarikhEmel).toLocaleString('ms-MY'))+'</small>':''}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" data-edit="${i}">Edit</button>${r.certId?`<button class="btn btn-primary btn-sm" data-view="${i}">Lihat</button><button class="btn btn-secondary btn-sm" data-email="${i}" ${!r.email||r.status!=='aktif'||['berjaya','sedang_hantar'].includes(r.statusEmel)?'disabled':''}>${r.statusEmel==='gagal'?'Cuba Email Lagi':'Hantar Email'}</button>`:`<button class="btn btn-primary btn-sm" data-generate="${i}" ${r.status!=='aktif'?'disabled':''}>Jana eSijil</button>`}</div></td></tr>`).join('')}</tbody></table></div>`:'<div class="alert ai">Tiada contributor untuk kursus ini.</div>';
+  el.innerHTML=CC.rows.length?`<div class="card" style="overflow-x:auto"><table style="width:100%;min-width:720px"><thead><tr><th>Nama</th><th>Peranan</th><th>Tajuk/Sumbangan</th><th>Status Sijil</th><th>Status Email</th><th>Tindakan</th></tr></thead><tbody>${CC.rows.map((r,i)=>`<tr><td>${escHtml(r.nama)}${r.status==='batal'?'<br><span class="badge bb">Dibatalkan</span>':''}</td><td>${escHtml(r.jenisSumbangan)}</td><td>${escHtml(r.tajukSumbangan||'-')}</td><td><span class="badge ${r.certId?'bl':'bm'}">${r.certId?'Dijana':'Belum Dijana'}</span></td><td>${escHtml(ccEmailLabel(r))}${r.tarikhEmel?'<br><small>'+escHtml(new Date(r.tarikhEmel).toLocaleString('ms-MY'))+'</small>':''}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" data-edit="${i}">Edit</button>${r.certId?`<button class="btn btn-primary btn-sm" data-view="${i}">Lihat</button><button class="btn btn-secondary btn-sm" data-email="${i}" ${!r.email||r.status!=='aktif'||r.statusEmel==='sedang_hantar'||(r.deliveryVersion==='pdf-v1'&&r.statusEmel==='berjaya')?'disabled':''}>${r.deliveryVersion==='pdf-v1'&&r.statusEmel==='gagal'?'Cuba Hantar PDF Lagi':'Hantar PDF'}</button>`:`<button class="btn btn-primary btn-sm" data-generate="${i}" ${r.status!=='aktif'?'disabled':''}>Jana eSijil</button>`}</div></td></tr>`).join('')}</tbody></table></div>`:'<div class="alert ai">Tiada contributor untuk kursus ini.</div>';
   el.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>ccForm(CC.rows[Number(b.dataset.edit)]));
   el.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>goTo('admin-contributor-sijil?certId='+encodeURIComponent(CC.rows[Number(b.dataset.view)].certId)));
   el.querySelectorAll('[data-generate]').forEach(b=>b.onclick=()=>ccRowAction('generate',CC.rows[Number(b.dataset.generate)]));
@@ -1187,7 +1189,7 @@ function ccForm(row){
 }
 async function ccRowAction(kind,row){
   if(CC.busy)return;
-  const message=kind==='email'?'Hantar notifikasi penghargaan kepada '+row.email+'? Pautan emel untuk pengesahan sahaja; serahkan PDF berasingan.':'Jana sijil untuk '+row.nama+'? Maklumat akan dibekukan.';
+  const message=kind==='email'?'Hantar eSijil PDF kepada '+row.email+'?':'Jana sijil untuk '+row.nama+'? Maklumat akan dibekukan.';
   if(!confirm(message))return;
   CC.busy=true;const epoch=CC.epoch;let error='';
   $('cc-table').querySelectorAll('button').forEach(b=>b.disabled=true);$('cc-course').disabled=true;
