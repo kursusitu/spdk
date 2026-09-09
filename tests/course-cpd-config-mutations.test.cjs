@@ -55,9 +55,9 @@ mutate('15 managed summary cross-mapped',once("escHtml(item.noCpd)","escHtml(Str
 mutate('16 disabled readiness permits execute',once("!['disabled','no_candidates'].includes(preview.readiness)","preview.readiness!=='no_candidates'"),'cpd-admin-page.test.cjs',/preview renders readiness disabled/);
 mutate('17 no-candidates readiness permits execute',once("!['disabled','no_candidates'].includes(preview.readiness)","preview.readiness!=='disabled'"),'cpd-admin-page.test.cjs',/preview renders readiness no_candidates/);
 mutate('18 award definition omitted',once("<div><strong>Takrif anugerah semasa</strong>'+cpdConfigSummaryHtml(awardConfig)+'</div>",""),'cpd-admin-page.test.cjs',/preview renders readiness ready/);
-mutate('19 CPD-2 confirmation gate removed',once("preview.counts.errors === 0 && !['disabled','no_candidates'].includes(preview.readiness) && page.confirmed &&","preview.counts.errors === 0 && !['disabled','no_candidates'].includes(preview.readiness) &&"),'cpd-admin-page.test.cjs',/confirmation starts unchecked and execute requires/);
+mutate('19 CPD-2 confirmation gate removed',once("&& page.confirmed && preview.counts.inserted", "&& preview.counts.inserted"),'cpd-admin-page.test.cjs',/confirmation starts unchecked and execute requires/);
 mutate('20 stale fingerprint retained',once("page.preview = null;",""),'cpd-admin-page.test.cjs',/course switch invalidates preview/);
-mutate('21 version and cache mismatch',once("const APP_VERSION='1.0.14'","const APP_VERSION='1.0.11'"),'reporting-page.test.cjs',/consistently versioned at 1\.0\.14/);
+mutate('21 version and cache mismatch',once("const APP_VERSION='1.0.15'","const APP_VERSION='1.0.11'"),'reporting-page.test.cjs',/consistently versioned at 1\.0\.15/);
 mutate('22 mobile containment removed',once("background:#f8fafc;overflow:hidden","background:#f8fafc"),'course-cpd-config.test.cjs',/CPD form remains bounded/);
 mutate('23 post-response identity check removed',all("if(!kuCpdOperationCurrent(operation))return;",""),'course-cpd-config.test.cjs',/stale course success cannot remove or reload/);
 mutate('24 stale final cleanup enabled',all("if(kuCpdOperationCurrent(operation)){loading(false)","if(true){loading(false)"),'course-cpd-config.test.cjs',/stale final cleanup cannot clear/);

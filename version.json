@@ -1,5 +1,5 @@
 {
-  "version": "1.0.14",
-  "releasedAt": "2026-09-08",
-  "notes": "Send contributor eSijil as PDF attachment"
+  "version": "1.0.15",
+  "releasedAt": "2026-09-09",
+  "notes": "Improve CPD source preview diagnostics"
 }

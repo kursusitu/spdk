@@ -144,6 +144,19 @@ tr:hover td{background:#f9fafb}
 .cpd-stack table{min-width:760px}
 .cpd-stack td{overflow-wrap:anywhere}
 .cpd-note{font-size:13px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.cpd-schema{border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:14px;min-width:0;overflow-wrap:anywhere}
+.cpd-schema ul{padding-left:22px;margin:8px 0 14px}
+.cpd-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.cpd-chip{display:inline-block;padding:4px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:12px;max-width:100%;overflow-wrap:anywhere}
+.cpd-issues td{vertical-align:top;line-height:1.6}
+@media(max-width:768px){
+  .cpd-stack .cpd-issues{display:block;min-width:0;width:100%}
+  .cpd-issues thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .cpd-issues tbody{display:grid;gap:12px}
+  .cpd-issues tr{display:block;border:1px solid var(--border);border-radius:12px;padding:12px}
+  .cpd-issues td{display:block;padding:5px 0;border:0;white-space:normal}
+  .cpd-issues td:before{content:attr(data-label) ': ';font-weight:700}
+}
 .cpd-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
 .cpd-confirm{display:flex;align-items:flex-start;gap:12px;line-height:1.6;margin:16px 0;cursor:pointer}
 .cpd-confirm input{width:20px;height:20px;flex:0 0 20px;margin-top:3px;accent-color:var(--primary)}
@@ -183,7 +196,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.14';
+const APP_VERSION='1.0.15';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -588,6 +601,88 @@ function cpdCounts(value) {
   }
   return result;
 }
+const CPD_DIAGNOSTIC_MESSAGES = Object.freeze({
+  SOURCE_MISSING_HEADER: ['Lajur wajib tiada.', 'Tambah atau namakan semula lajur mengikut nama yang dijangka.'],
+  SOURCE_DUPLICATE_HEADER: ['Nama lajur berulang.', 'Pastikan setiap nama lajur hanya digunakan sekali.'],
+  SOURCE_RESERVED_HEADER: ['Nama lajur tidak dibenarkan.', 'Namakan semula lajur ini; gunakan nama lajur yang dijangka.'],
+  SOURCE_UNEXPECTED_HEADER: ['Lajur tambahan tidak digunakan untuk award.', 'Semak jika lajur ini sebenarnya lajur wajib yang tersalah nama.'],
+  SOURCE_ALIAS_SUGGESTION: ['Nama lajur mungkin sepadan dengan lajur wajib.', 'Semak maksud lajur dan namakan semula secara manual. Tiada pemetaan automatik.'],
+  SOURCE_CONFIG_INVALID: ['Konfigurasi sumber tidak lengkap.', 'Minta pentadbir menyemak ID sumber, fail dan nama tab dalam CPDSource.'],
+  SOURCE_DUPLICATE_CONFIG: ['Konfigurasi sumber bertindih.', 'Minta pentadbir menyemak sumber berulang bagi kursus ini.'],
+  SOURCE_READ_FAILED: ['Data sumber tidak dapat dibaca.', 'Semak kewujudan fail/tab dan akses akaun sistem kepada sumber.'],
+  SOURCE_MISSING_NOKP: ['NoKP belum diisi.', 'Isi NoKP 12 digit dalam kolum IC; simpan sebagai teks untuk mengekalkan sifar awal.'],
+  SOURCE_INVALID_NOKP: ['NoKP tidak sah.', 'Semak kolum IC: gunakan 12 digit; sempang dan ruang sahaja dibenarkan sebagai pemisah.'],
+  SOURCE_DUPLICATE_IDENTITY: ['NoKP ternormal berulang dalam sumber.', 'Semak semua baris individu ini dan kategori award; jangan padankan menggunakan nama atau emel.'],
+  SOURCE_DUPLICATE_AWARD: ['NoKP mempunyai award yang sama berulang bagi kategori ini.', 'Kekalkan satu baris award yang betul bagi NoKP dan kategori ini.'],
+  SOURCE_CONFLICTING_AWARD: ['NoKP mempunyai nombor atau mata CPD yang bercanggah bagi kategori ini.', 'Sahkan award rasmi dan betulkan baris bercanggah sebelum pratonton baharu.'],
+  SOURCE_INVALID_POINTS: ['Mata CPD tidak sah atau tidak melebihi 0.', 'Gunakan nombor melebihi 0 dalam format (CPD POINTS: 4).'],
+  SOURCE_MISSING_NOCPD: ['No. CPD tiada dalam maklumat award.', 'Isi No. CPD rasmi sebelum (CPD POINTS: 4).'],
+  SOURCE_MALFORMED_AWARD: ['Format maklumat award tidak sah.', 'Gunakan format seperti DVSCPD-2026-123 (CPD POINTS: 4).'],
+  SOURCE_UNMATCHED_IDENTITY: ['NoKP belum sepadan dengan pengguna SPDK.', 'Semak NoKP sumber dan rekod pengguna. Sumber luaran masih boleh diimport mengikut peraturan sedia ada.'],
+  SOURCE_IDENTITY_CHECK_UNAVAILABLE: ['Semakan NoKP dengan SPDK tidak tersedia.', 'Minta pentadbir menyemak lajur NoMyKad dalam Users. Ini tidak mengubah kelayakan import.'],
+  SOURCE_INVALID_RECORD: ['Rekod mengandungi nilai yang tidak selamat untuk diimport.', 'Semak teks yang bermula dengan = atau kandungan terlalu panjang dalam sumber.'],
+  SOURCE_TARGET_CONFLICT: ['Award bertindih dengan rekod CPD sedia ada.', 'Minta pentadbir menyemak ledger CPD; jangan padam atau ganti award tanpa semakan.']
+});
+function cpdDiagnosticText(value) {
+  return typeof value === 'string' ? value.replace(/https?:\/\/\S+/gi,'[pautan sumber]')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[emel]')
+    .replace(/\d[\d\s-]{10,}\d/g,'[NoKP bertopeng]').replace(/[A-Za-z0-9_-]{25,}/g,'[rujukan sumber]').slice(0,180) : '';
+}
+function cpdReadDiagnostics(result) {
+  if (!Array.isArray(result.sourceSchema) || !Array.isArray(result.issues)) return null;
+  const sourceSchema = [], issues = [], sources = new Set();
+  const textList = values => Array.isArray(values) && values.every(v=>typeof v==='string') ? values.map(cpdDiagnosticText) : null;
+  for (const value of result.sourceSchema) {
+    if (!value || !Number.isSafeInteger(value.source) || value.source < 1 || sources.has(value.source) || typeof value.valid !== 'boolean') return null;
+    sources.add(value.source);
+    const schema={source:value.source,valid:value.valid,sourceLabel:cpdDiagnosticText(value.sourceLabel),
+      sourceFile:cpdDiagnosticText(value.sourceFile),sourceTab:cpdDiagnosticText(value.sourceTab)};
+    for (const field of ['expectedHeaders','detectedHeaders','missingHeaders','duplicateHeaders','unexpectedHeaders','reservedHeaders']) {
+      schema[field]=textList(value[field]); if(!schema[field])return null;
+    }
+    if (!Array.isArray(value.aliasSuggestions)) return null;
+    schema.aliasSuggestions=[];
+    for (const alias of value.aliasSuggestions) {
+      if(!alias || typeof alias.detectedHeader!=='string' || typeof alias.ambiguous!=='boolean')return null;
+      const expectedHeaders=textList(alias.expectedHeaders); if(!expectedHeaders || !expectedHeaders.length)return null;
+      schema.aliasSuggestions.push({detectedHeader:cpdDiagnosticText(alias.detectedHeader),expectedHeaders,ambiguous:alias.ambiguous});
+    }
+    sourceSchema.push(schema);
+  }
+  for (const value of result.issues) {
+    if (!value || !cpdOwn(CPD_DIAGNOSTIC_MESSAGES,value.type) || !['error','warning'].includes(value.severity) ||
+        !sources.has(value.source) || !Number.isSafeInteger(value.sourceRow) || value.sourceRow<0) return null;
+    issues.push({type:value.type,severity:value.severity,source:value.source,sourceRow:value.sourceRow,
+      kategori:['Peserta','Penceramah'].includes(value.kategori)?value.kategori:'',field:cpdDiagnosticText(value.field),
+      maskedNoKP:typeof value.maskedNoKP==='string' && /^\*{6}-\*{2}-(?:[0-9]{4}|\*{4})$/.test(value.maskedNoKP)?value.maskedNoKP:'******-**-****'});
+  }
+  return {sourceSchema,issues};
+}
+function cpdDiagnosticsBlocked(preview) {
+  return !!(preview && ((preview.sourceSchema||[]).some(s=>!s.valid) || (preview.issues||[]).some(i=>i.severity==='error')));
+}
+function cpdDiagnosticsHtml(preview) {
+  if (!preview.sourceSchema || !preview.sourceSchema.length) return '';
+  const chips = values => '<div class="cpd-chips">'+(values.length?values.map(v=>'<span class="cpd-chip">'+escHtml(v)+'</span>').join(''):'<span>Tiada</span>')+'</div>';
+  let body='<section class="card" id="cpd-diagnostics"><h3>Semakan Sumber Luaran</h3>';
+  for (const schema of preview.sourceSchema) {
+    body+='<div class="cpd-schema"><h4>'+escHtml(schema.sourceLabel||'Sumber '+schema.source)+'</h4><p class="cpd-note">Sumber '+schema.source+' · Fail: '+escHtml(schema.sourceFile)+' · Tab: '+escHtml(schema.sourceTab)+'</p>'+
+      '<p><strong>'+(schema.valid?'Struktur lajur sumber sah':'Struktur sumber perlu diperbaiki')+'</strong></p>'+
+      '<strong>Dijangka:</strong>'+chips(schema.expectedHeaders)+'<strong>Dikesan:</strong>'+chips(schema.detectedHeaders);
+    for (const [field,label] of [['missingHeaders','Tiada'],['duplicateHeaders','Berulang'],['reservedHeaders','Tidak dibenarkan'],['unexpectedHeaders','Tambahan']]) {
+      if(schema[field].length)body+='<strong>'+label+':</strong>'+chips(schema[field]);
+    }
+    if(schema.aliasSuggestions.length)body+='<strong>Cadangan:</strong><ul>'+schema.aliasSuggestions.map(a=>'<li>“'+escHtml(a.detectedHeader)+'” mungkin sepadan dengan '+a.expectedHeaders.map(h=>'“'+escHtml(h)+'”').join(' atau ')+(a.ambiguous?'. Padanan tidak jelas; sahkan kategori.':'.')+'</li>').join('')+'</ul><p class="cpd-note">Semak dan namakan semula lajur sumber secara manual. Tiada pemetaan automatik.</p>';
+    body+='</div>';
+  }
+  if(preview.issues.length){
+    const errors=preview.issues.filter(i=>i.severity==='error').length;
+    body+='<p class="cpd-note" style="margin:16px 0">'+errors+' isu menyekat · '+(preview.issues.length-errors)+' amaran. Amaran tidak mengubah peraturan import sedia ada. Baris ialah nombor sebenar dalam Sheet (tajuk di baris 1).</p>'+
+      '<div class="tw" tabindex="0" role="region" aria-label="Semakan isu sumber"><table class="cpd-issues" aria-label="Isu sumber CPD"><thead><tr>'+['Sumber / Baris','Kategori','NoKP','Isu','Cadangan'].map(h=>'<th scope="col">'+h+'</th>').join('')+'</tr></thead><tbody>'+
+      preview.issues.map(i=>{const message=CPD_DIAGNOSTIC_MESSAGES[i.type];return '<tr><td data-label="Sumber / Baris">Sumber '+i.source+' / '+(i.sourceRow||'Konfigurasi')+'</td><td data-label="Kategori">'+(i.kategori||'—')+'</td><td data-label="NoKP">'+(i.sourceRow>1?escHtml(i.maskedNoKP):'—')+'</td><td data-label="Isu"><span class="badge '+(i.severity==='error'?'bt':'bb')+'">'+(i.severity==='error'?'Menyekat':'Amaran')+'</span><br>'+message[0]+(i.field?'<div class="cpd-note">Lajur: '+escHtml(i.field)+'</div>':'')+'</td><td data-label="Cadangan">'+message[1]+'</td></tr>';}).join('')+'</tbody></table></div>';
+  } else body+='<p class="cpd-note" style="margin-top:14px">Tiada isu sumber dikesan.</p>';
+  return body+'</section>';
+}
 function cpdPreviewData(result, courseId) {
   const counts = cpdCounts(result && result.counts);
   if (!result || result.success !== true || typeof result.canExecute !== 'boolean' || !counts ||
@@ -608,7 +703,13 @@ function cpdPreviewData(result, courseId) {
   const readiness=['ready','disabled','no_candidates'].includes(result.readiness)?result.readiness:'';
   const config=result.cpdConfig===undefined?null:cpdNormalizeConfig(result.cpdConfig);
   if(result.cpdConfig!==undefined&&!config)return null;
-  return { courseId: courseId, fingerprint: result.fingerprint, counts: counts, rows: rows, readiness, cpdConfig:config };
+  const preview = { courseId: courseId, fingerprint: result.fingerprint, counts: counts, rows: rows, readiness, cpdConfig:config };
+  // Older backend responses remain supported; partial/malformed new contracts fail closed.
+  if(result.sourceSchema!==undefined || result.issues!==undefined){
+    const diagnostics=cpdReadDiagnostics(result);if(!diagnostics)return null;
+    Object.assign(preview,diagnostics);
+  }
+  return preview;
 }
 function cpdSelectedCourse(page) {
   return page && page.courses.find(course => course.courseId === page.courseId && course.namaKursus.trim());
@@ -617,7 +718,7 @@ function cpdCanExecute() {
   const page = cpdPage, preview = page && page.preview;
   return !!(page && cpdAllowed() && !page.forbidden && !cpdRun && page.phase === 'preview' &&
     preview && cpdSelectedCourse(page) && page.courseId === preview.courseId && page.canExecute === true &&
-    preview.counts.errors === 0 && !['disabled','no_candidates'].includes(preview.readiness) && page.confirmed && preview.counts.inserted + preview.counts.updated > 0);
+    preview.counts.errors === 0 && !cpdDiagnosticsBlocked(preview) && !['disabled','no_candidates'].includes(preview.readiness) && page.confirmed && preview.counts.inserted + preview.counts.updated > 0);
 }
 function cpdSetConfirmed(checked) {
   if (!cpdPage || cpdRun || !cpdPage.preview || cpdPage.forbidden) return;
@@ -789,15 +890,15 @@ function cpdRender() {
   if (busy) body += '<div class="alert ai" role="status">Penyegerakan sedang menunggu keputusan. Jangan hantar permintaan sekali lagi.</div>';
   if (page.phase === 'loading') body += '<div class="alert ai" role="status">Memuatkan pratonton CPD...</div>';
   if (preview) {
-    const blocked = !page.canExecute || preview.counts.errors > 0 || ['disabled','no_candidates'].includes(preview.readiness);
+    const blocked = !page.canExecute || preview.counts.errors > 0 || cpdDiagnosticsBlocked(preview) || ['disabled','no_candidates'].includes(preview.readiness);
     const noChanges = preview.counts.inserted + preview.counts.updated === 0;
     const awardConfig=preview.cpdConfig||course.cpdConfig;
-    body += '<section class="card"><h3>Ringkasan Pratonton</h3>'+(preview.readiness?'<div class="alert ai" role="status">'+cpdReadinessMessage(preview.readiness)+'</div>':'')+'<p class="cpd-note">Bilangan ini merujuk kepada rekod CPD atau isu semakan, bukan bilangan individu unik.</p>' +
-      cpdSummaryHtml(preview.counts) + '</section><section class="card"><h3>Tindakan yang Dicadangkan</h3>' +
+    body += '<section class="card"><h3>Ringkasan Pratonton</h3>'+(preview.readiness?'<div class="alert ai" role="status">'+(cpdDiagnosticsBlocked(preview)?'Betulkan isu sumber yang menyekat sebelum penyegerakan.':cpdReadinessMessage(preview.readiness))+'</div>':'')+'<p class="cpd-note">Bilangan ini merujuk kepada rekod CPD atau isu semakan, bukan bilangan individu unik.</p>' +
+      cpdSummaryHtml(preview.counts) + '</section>'+cpdDiagnosticsHtml(preview)+'<section class="card"><h3>Tindakan yang Dicadangkan</h3>' +
       '<div class="tw" tabindex="0" role="region" aria-label="Jadual tindakan CPD, boleh ditatal mendatar"><table><thead><tr>' +
-      ['Sumber','Baris Data','Kategori','No. KP Bertopeng','Tindakan','Keterangan'].map(label => '<th scope="col">' + label + '</th>').join('') + '</tr></thead><tbody>' +
+      ['Sumber',preview.sourceSchema&&preview.sourceSchema.length?'Baris Sheet':'Baris Data','Kategori','No. KP Bertopeng','Tindakan','Keterangan'].map(label => '<th scope="col">' + label + '</th>').join('') + '</tr></thead><tbody>' +
       (preview.rows.length ? preview.rows.map(row => '<tr><td>Sumber ' + row.source + '</td><td>' +
-        (row.row === 0 ? 'Semakan sumber/sistem' : row.row) + '</td><td>' + (row.kategori || '—') + '</td><td>' +
+        (row.row === 0 ? 'Semakan sumber/sistem' : preview.sourceSchema&&preview.sourceSchema.length ? row.row+1 : row.row) + '</td><td>' + (row.kategori || '—') + '</td><td>' +
         (row.row === 0 ? '—' : escHtml(row.maskedNoKp)) + '</td><td><span class="badge ' +
         (row.status === 'error' ? 'bt' : row.status === 'unchanged' ? 'bb' : 'ba') + '">' + CPD_ACTIONS[row.status] +
         '</span></td><td>' + (CPD_ROW_MESSAGES[row.code] || 'Maklumat semakan tidak dikenali. Sila rujuk pentadbir.') + '</td></tr>').join('') :

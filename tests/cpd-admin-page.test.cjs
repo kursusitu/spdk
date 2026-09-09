@@ -22,6 +22,72 @@ const courseList = () => ({ success: true, kursus: [
   { courseId: COURSE_B, namaKursus: 'Kursus Beta', tarikhMulaInput: '2026-09-04', status: 'aktif' }
 ] });
 
+const diagnosticSchema=(extra={})=>({source:1,sourceLabel:'Senarai CPD',sourceFile:'Kursus September',sourceTab:'CPD data',
+  expectedHeaders:['IC (without "-")','Email'],detectedHeaders:['IC','Email'],missingHeaders:['IC (without "-")'],
+  duplicateHeaders:[],reservedHeaders:[],unexpectedHeaders:['IC'],aliasSuggestions:[{detectedHeader:'IC',expectedHeaders:['IC (without "-")'],ambiguous:false}],valid:false,...extra});
+const diagnosticIssue=(extra={})=>({type:'SOURCE_INVALID_NOKP',severity:'error',source:1,sourceRow:12,kategori:'Peserta',
+  maskedNoKP:'******-**-1234',field:'IC (without "-")',...extra});
+
+test('Phase 1 schema and row issues provide actionable BM preview',async()=>{
+  const h=harness({fetchImpl:body=>body.action==='getSenaraiKursus'?courseList():preview({canExecute:false,
+    sourceSchema:[diagnosticSchema()],issues:[diagnosticIssue(),diagnosticIssue({type:'SOURCE_INVALID_POINTS',sourceRow:18,kategori:'Penceramah'})]})});
+  await h.ready();for(const text of ['Struktur sumber perlu diperbaiki','Dijangka:','Dikesan:','Tiada:','Cadangan:',
+    'Tiada pemetaan automatik','Sumber 1 / 12','Sumber 1 / 18','Mata CPD tidak sah','NoKP tidak sah','Senarai CPD','Kursus September','CPD data'])assert.ok(h.output().includes(text),text);
+  assert.equal(h.nodes['cpd-confirm'].disabled,true);assert.equal(h.nodes['cpd-execute'].disabled,true);
+  h.context.cpdSetConfirmed(true);await h.context.cpdExecute();assert.equal(executeCalls(h).length,0);
+});
+test('Phase 1 diagnostics independently disable confirmation when backend canExecute is inconsistent',async()=>{
+  for(const diagnostics of [
+    {sourceSchema:[diagnosticSchema()],issues:[]},
+    {sourceSchema:[diagnosticSchema({valid:true})],issues:[diagnosticIssue()]}
+  ]){
+    const h=harness({fetchImpl:body=>body.action==='getSenaraiKursus'?courseList():preview(diagnostics)});
+    await h.ready(true);assert.equal(h.nodes['cpd-confirm'].disabled,true);assert.equal(h.context.cpdCanExecute(),false);
+    await h.context.cpdExecute();assert.equal(executeCalls(h).length,0);
+  }
+});
+test('Phase 1 warnings retain explicit confirmation and exact execute contract',async()=>{
+  const h=harness({fetchImpl:body=>body.action==='getSenaraiKursus'?courseList():body.action==='executeCpdSync'?{success:true,counts:counts()}:
+    preview({sourceSchema:[diagnosticSchema({valid:true,missingHeaders:[]})],issues:[diagnosticIssue({type:'SOURCE_UNMATCHED_IDENTITY',severity:'warning'})]})});
+  await h.ready();assert.equal(h.nodes['cpd-confirm'].disabled,false);assert.equal(h.context.cpdCanExecute(),false);
+  assert.match(h.output(),/0 isu menyekat · 1 amaran/);h.context.cpdSetConfirmed(true);await h.context.cpdExecute();
+  assert.deepEqual(executeCalls(h)[0].body,{action:'executeCpdSync',token:TOKEN,courseId:COURSE_A,fingerprint:FP_A});
+});
+test('Phase 1 diagnostics reject partial, unknown or malformed payloads without enabling sync',async()=>{
+  for(const diagnostics of [{sourceSchema:[]},{issues:[]},{sourceSchema:null,issues:[]},
+    {sourceSchema:[diagnosticSchema()],issues:[diagnosticIssue({type:'NEW_UNKNOWN_CODE'})]},
+    {sourceSchema:[diagnosticSchema()],issues:[diagnosticIssue({sourceRow:'12'})]},
+    {sourceSchema:[diagnosticSchema()],issues:[diagnosticIssue({source:2})]},
+    {sourceSchema:[diagnosticSchema({missingHeaders:'IC'})],issues:[]}]){
+    const h=harness({fetchImpl:body=>body.action==='getSenaraiKursus'?courseList():preview(diagnostics)});await h.ready(true);
+    assert.equal(h.page().preview,null);assert.equal(h.context.cpdCanExecute(),false);assert.equal(executeCalls(h).length,0);
+  }
+});
+test('Phase 1 diagnostic strings are escaped, masked and discard raw message/name/email/value fields',async()=>{
+  const marker='<img src=x onerror=alert(1)>',secret='900101101234 private@example.test https://docs.google.com/private';
+  const h=harness({fetchImpl:body=>body.action==='getSenaraiKursus'?courseList():preview({
+    sourceSchema:[diagnosticSchema({sourceLabel:marker,sourceFile:secret,sourceTab:marker,detectedHeaders:[marker,secret]})],
+    issues:[diagnosticIssue({maskedNoKP:'900101101234',field:secret,message:'PRIVATE MESSAGE',suggestion:'PRIVATE SUGGESTION',value:secret,nama:'PRIVATE NAME',email:secret})]})});
+  await h.ready();assert.ok(h.output().includes('&lt;img src=x onerror=alert(1)&gt;'));assert.doesNotMatch(h.output(),/<img src=x/);
+  assertPrivate(h,['900101101234','private@example.test','https://docs.google.com/private','PRIVATE MESSAGE','PRIVATE SUGGESTION','PRIVATE NAME']);
+  assert.match(h.output(),/\*\*\*\*\*\*-\*\*-\*\*\*\*/);
+  assert.equal(JSON.stringify(h.page().preview).includes('PRIVATE'),false);
+});
+test('Phase 1 ambiguous aliases offer alternatives without choosing a mapping',async()=>{
+  const h=harness({fetchImpl:body=>body.action==='getSenaraiKursus'?courseList():preview({sourceSchema:[diagnosticSchema({
+    aliasSuggestions:[{detectedHeader:'CPD',expectedHeaders:['CPD Peserta','CPD Penceramah'],ambiguous:true}]})],issues:[]})});
+  await h.ready();assert.match(h.output(),/Padanan tidak jelas; sahkan kategori/);assert.match(h.output(),/CPD Peserta/);assert.match(h.output(),/CPD Penceramah/);assert.equal(h.context.cpdCanExecute(),false);
+});
+test('Phase 1 mobile issue cards retain accessible table labels',()=>{
+  assert.match(html,/\.cpd-stack \.cpd-issues\{display:block;min-width:0;width:100%\}/);
+  assert.match(html,/content:attr\(data-label\)/);assert.match(html,/aria-label="Isu sumber CPD"/);
+});
+test('Phase 1 action display uses Sheet coordinates without changing legacy row DTO',async()=>{
+  const h=harness({fetchImpl:body=>body.action==='getSenaraiKursus'?courseList():preview({sourceSchema:[diagnosticSchema({valid:true})],issues:[]})});
+  await h.ready();assert.match(h.output(),/<th scope="col">Baris Sheet/);assert.match(h.output(),/<td>Sumber 1<\/td><td>2<\/td>/);
+  assert.equal(h.page().preview.rows[0].row,1);
+});
+
 function harness({ role = 'admin', token = TOKEN, fetchImpl } = {}) {
   const calls = [], logs = [], rendered = [], timers = new Map(), listeners = {};
   const nodes = {};
