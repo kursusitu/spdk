@@ -196,7 +196,7 @@ tr:hover td{background:#f9fafb}
 <div id="lo"><div class="spinner"></div></div>
 <script>
 const GAS_URL='https://script.google.com/macros/s/AKfycbzspzwfN02MQc1qzDMX18NI_-OC_597_747ay7kous4Ql6ncDKAGktucnIaH-QXDy0Xug/exec';
-const APP_VERSION='1.0.15';
+const APP_VERSION='1.0.16';
 const L={
   L01:'./logo-jata-kpkm.png',
   L02:'./logo-dvs.png',
@@ -281,33 +281,108 @@ function bootstrapAttendanceQuery(){
   window.history.replaceState(null,'',cleanUrl);
 }
 bootstrapAttendanceQuery();
+// Source-audited business reads only. Legacy semakSesi_ may clean expired sessions;
+// valid application failures are never retried. Unknown actions fail closed.
+const TRANSPORT_READ_ACTIONS=new Set([
+  'getDashboardPeserta','getDashboardAdmin','getSenaraiKursus','getSenaraiPendaftaran',
+  'getPendaftaranSaya','getPesertaBelumDaftar','getLaporan','getKursusUntukKehadiran',
+  'getSenaraiKehadiran','getRingkasanKehadiran','getSenaraiMaklumBalas','getSoalanMaklumBalas',
+  'getSoalanAdmin','getStatusPesertaMaklumBalas','getProfil','getFotoUrl','getSenaraiPengguna',
+  'getKursusUntukSuratTawaran','getSenaraiTawaran','getStatusSuratTawaran','getSijilSaya',
+  'verifyCert','previewCpdSync','getKursusUntukSijilContributor','getCourseContributors','getContributorEcert'
+]);
+// Includes deceptive reads: renewal, catalog auto-tamat, QR creation/backfill.
+const TRANSPORT_NO_RETRY_ACTIONS=new Set([
+  'renewSession','getSenaraiKursusAktif','getStatusQR','getQRCode','login','daftarAkaun',
+  'lupaKataLaluan','resetKataLaluan','logKeluar','tukarKataLaluan','kemaskiniprofil',
+  'kemaskiniPengguna','nyahaktifPengguna','aktifkanPengguna','tukarStatusPenggunaPukal',
+  'resetKataLaluanAdmin','tukarRolePengguna','ciptaKursus','kemaskinikursus','batalKursus',
+  'updateCourseCpdConfig','daftarKursus','assignPesertaKeKursus','lulusPendaftaran',
+  'tolakPendaftaran','bulkLulusPendaftaran','rekodKehadiran','scanQR','janaQRCodeBaharu',
+  'submitMaklumBalas','kemaskinSoalan','tambahSoalan','padamSoalan','hantarSuratTawaran',
+  'saveAndGenerateContributorEcert','generateContributorEcert','updateCourseContributor',
+  'sendContributorEcertEmail','executeCpdSync','hantarSemulaEcert','getSenaraiEcert'
+]);
+const TRANSPORT_MESSAGE='Sambungan ke SPDK terganggu sementara. Cuba semula.';
+let transportViewEpoch=0;
+function transportError(code,action,attempt,httpStatus=0,retryable=false){
+  const error=new Error(code==='TIMEOUT'?'Permintaan tamat masa.':TRANSPORT_MESSAGE);
+  error.name=code==='TIMEOUT'?'TimeoutError':code==='ABORTED'?'AbortError':'TransportError';
+  Object.assign(error,{code,action,attempt,httpStatus,retryable});
+  return error;
+}
+function transportPause(ms,signal,action,attempt){
+  return new Promise((resolve,reject)=>{
+    let timer;
+    const cleanup=()=>{clearTimeout(timer);if(signal)signal.removeEventListener('abort',abort)};
+    const abort=()=>{cleanup();reject(transportError('ABORTED',action,attempt))};
+    if(signal&&signal.aborted){abort();return}
+    timer=setTimeout(()=>{cleanup();resolve()},ms);
+    if(signal)signal.addEventListener('abort',abort,{once:true});
+  });
+}
 async function api(action,params={},options={}){
-  const body={action,...params};
+  const body={...params,action};
   if(S.token)body.token=S.token;
-  const requestToken=body.token;
+  const requestToken=S.token;
+  const requestHash=window.location.hash;
+  const canRetry=TRANSPORT_READ_ACTIONS.has(action)&&!TRANSPORT_NO_RETRY_ACTIONS.has(action);
   const request={method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)};
   if(options.signal)request.signal=options.signal;
-  const res=await fetch(GAS_URL,request);
-  const result=await res.json();
+  function checkContext(){
+    if(options.signal&&options.signal.aborted)throw transportError('ABORTED',action,attempt);
+    if(S.token!==requestToken||(canRetry&&window.location.hash!==requestHash)||
+      (options.isCurrent&&!options.isCurrent()))throw transportError('STALE_REQUEST',action,attempt);
+  }
+  let attempt=0;
+  for(attempt=1;attempt<=(canRetry?3:1);attempt++){
+    checkContext();
+    let result;
+    try{
+      let res;
+      try{res=await fetch(GAS_URL,request)}catch(error){
+        throw transportError(error&&error.name==='AbortError'?'ABORTED':'NETWORK',action,attempt,0,canRetry&&(!error||error.name!=='AbortError'));
+      }
+      checkContext();
+      if(!res.ok){
+        const status=res.status;
+        throw transportError(status===404?'HTTP_404':'HTTP_ERROR',action,attempt,status,canRetry&&[404,500,502,503,504].includes(status));
+      }
+      const type=(res.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
+      if(!/^application\/(?:[a-z0-9!#$&^_.+-]+\+)?json$/.test(type))throw transportError('NON_JSON',action,attempt,res.status,canRetry);
+      try{result=await res.json()}catch(error){
+        throw transportError(error&&error.name==='AbortError'?'ABORTED':'MALFORMED_JSON',action,attempt,res.status,canRetry&&(!error||error.name!=='AbortError'));
+      }
+      checkContext();
+      if(!result||typeof result!=='object'||Array.isArray(result)||typeof result.success!=='boolean')throw transportError('INVALID_RESPONSE',action,attempt,res.status,false);
+    }catch(error){
+      checkContext();
+      if(!error.retryable||attempt===3)throw error;
+      if(options.onRetry)options.onRetry({action,attempt,nextAttempt:attempt+1});
+      else toast('Menyambung semula...','info');
+      await transportPause(attempt===1?500:1500,options.signal,action,attempt);
+      continue;
+    }
   if(!isPublicApiAction(action)&&!AUTH_EXPIRY_EXEMPT_ACTIONS.has(action)&&isSessionExpiredResponse(result)){
     if(requestToken&&requestToken===S.token)handleExpiredSession();
     throw authExpiredError(result.message);
   }
   return result;
+  }
 }
 async function apiWithTimeout(action,params,timeoutMs){
   const controller=typeof AbortController==='function'?new AbortController():null;
-  let timer;
+  let timer,timedOut=false;
   const timeout=new Promise(function(_resolve,reject){
     timer=setTimeout(function(){
+      timedOut=true;
       if(controller)controller.abort();
-      const error=new Error('Permintaan tamat masa.');
-      error.name='TimeoutError';
+      const error=transportError('TIMEOUT',action,0);
       reject(error);
     },timeoutMs);
   });
   try{
-    return await Promise.race([api(action,params,controller?{signal:controller.signal}:{}),timeout]);
+    return await Promise.race([api(action,params,{signal:controller?controller.signal:undefined,isCurrent:()=>!timedOut}),timeout]);
   }finally{
     clearTimeout(timer);
   }
@@ -319,7 +394,7 @@ function toast(msg,type='info',ms=3500){
   setTimeout(()=>t.remove(),ms);
 }
 function loading(v){document.getElementById('lo').style.display=v?'flex':'none'}
-function setView(h){document.getElementById('app').innerHTML=h}
+function setView(h){transportViewEpoch++;document.getElementById('app').innerHTML=h}
 function $(id){return document.getElementById(id)}
 function on(id,ev,fn){const el=$(id);if(el)el.addEventListener(ev,fn)}
 function appVersionHtml(){return`<div class="app-version">v${APP_VERSION}</div>`}
@@ -441,8 +516,10 @@ async function bootstrapAuth(timeoutMs=15000){
   }
   authBootstrapInFlight=true;
   showAuthBootstrapLoading();
+  const bootstrapToken=S.token,bootstrapView=transportViewEpoch;
   try{
     const result=await apiWithTimeout('renewSession',{},timeoutMs);
+    if(S.token!==bootstrapToken||transportViewEpoch!==bootstrapView)return;
     if(isSessionExpiredResponse(result)){
       handleExpiredSession();
       return;
@@ -456,7 +533,7 @@ async function bootstrapAuth(timeoutMs=15000){
     loading(false);
     router();
   }catch(error){
-    showAuthBootstrapFailure();
+    if(S.token===bootstrapToken&&transportViewEpoch===bootstrapView)showAuthBootstrapFailure();
   }finally{
     authBootstrapInFlight=false;
   }
@@ -1042,10 +1119,21 @@ function pgDashboard(){
   setView(shell('Dashboard','dashboard','<div id="dc"><div class="alert ai">Memuatkan...</div></div>'));
   ['admin','superadmin'].includes(S.role)?loadDashAdmin():loadDashPeserta();
 }
+let transportLoadSequence=0;
+const transportLoads={};
+function beginTransportLoad(id,retry){
+  const sequence=++transportLoadSequence,token=S.token,view=transportViewEpoch,hash=window.location.hash;
+  transportLoads[id]=sequence;
+  const isCurrent=()=>transportLoads[id]===sequence&&S.token===token&&transportViewEpoch===view&&window.location.hash===hash;
+  return {options:{isCurrent,onRetry:()=>{if(isCurrent()&&$(id))$(id).innerHTML='<div class="alert ai" role="status">Menyambung semula...</div>'}},
+    fail:message=>{if(isCurrent()&&$(id))$(id).innerHTML='<div class="alert ad" role="alert">'+escHtml(message||TRANSPORT_MESSAGE)+'</div><button class="btn btn-secondary" onclick="'+retry+'()">Cuba Semula</button>'}};
+}
 async function loadDashPeserta(){
+  const load=beginTransportLoad('dc','loadDashPeserta');
   try{
-    const r=await api('getDashboardPeserta');
-    if(!r.success){toast(r.message||'Ralat.','danger');return}
+    const r=await api('getDashboardPeserta',{},load.options);
+    if(!load.options.isCurrent())return;
+    if(!r.success){load.fail(r.message);return}
     const d=r||{};
     $('dc').innerHTML=`
     <div class="sg">
@@ -1059,12 +1147,14 @@ async function loadDashPeserta(){
       ${d.pendaftaran.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikhKursus||'-'}</td><td>${badge(k.status)}</td></tr>`).join('')}
     </tbody></table></div>`:'<p style="color:#6b7280;font-size:14px">Tiada pendaftaran kursus lagi.</p>'}
     </div>`;
-  }catch(e){toast('Ralat memuatkan dashboard.','danger')}
+  }catch(e){load.fail()}
 }
 async function loadDashAdmin(){
+  const load=beginTransportLoad('dc','loadDashAdmin');
   try{
-    const r=await api('getDashboardAdmin');
-    if(!r.success){toast(r.message||'Ralat.','danger');return}
+    const r=await api('getDashboardAdmin',{},load.options);
+    if(!load.options.isCurrent())return;
+    if(!r.success){load.fail(r.message);return}
     const d=r||{};
     const pm=d.pendaftaranMenunggu||[];
     const kt=d.kursusTamat||[];
@@ -1088,7 +1178,7 @@ async function loadDashAdmin(){
         ${kt.map(x=>`<tr><td>${x.namaKursus}</td><td>${x.tarikhKursus||'-'}</td><td>${x.tempat||'-'}</td></tr>`).join('')}
       </tbody></table></div>`:'<p style="color:#6b7280;font-size:14px;text-align:center;padding:16px 0">Tiada kursus tamat.</p>'}
     </div>`;
-  }catch(e){toast('Ralat memuatkan dashboard.','danger')}
+  }catch(e){load.fail()}
 }
 function pgKatalog(){
   setView(shell('Katalog Kursus','katalog-kursus',`<div class="ph"><h2>Katalog Kursus</h2></div><div id="kc"><div class="alert ai">Memuatkan kursus...</div></div>`));
@@ -1978,8 +2068,11 @@ function kuCpdOperationCurrent(operation){
     S.token===operation.token&&operation.state.courseId===operation.courseId&&operation.state.revision===operation.revision;
 }
 async function loadKursus(){
+  const load=beginTransportLoad('kuc','loadKursus');
   try{
-    const r=await api('getSenaraiKursus');
+    const r=await api('getSenaraiKursus',{},load.options);
+    if(!load.options.isCurrent())return;
+    if(!r.success){load.fail(r.message);return}
     const rows=r.kursus||r.pendaftaran||r.pengguna||r.peserta||r.kursus||r.pendaftaran||r.pengguna||r.data||[];
     kuKursusRows=rows;kuCoursesGeneration++;
     $('kuc').innerHTML=rows.length?`<div class="tw"><table><thead><tr><th>Nama Kursus</th><th>Tarikh</th><th>Tempat</th><th>Peserta</th><th>Status</th><th></th></tr></thead><tbody>
@@ -1992,7 +2085,7 @@ async function loadKursus(){
       <td><div style="display:flex;gap:6px;flex-wrap:wrap">${canEdit?`<button class="btn btn-secondary btn-sm" onclick="modalKursus(${i})">Edit</button>`:''}${statusAsal==='tamat'&&['admin','superadmin'].includes(S.role)?`<button class="btn btn-secondary btn-sm" onclick="modalTetapanCpd(${i})">Tetapan CPD</button>`:''}${statusAsal==='aktif'||statusAsal==='penuh'?`<button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.courseId}','${namaEsc}')">Batal</button>`:''}</div></td></tr>`;
       }).join('')}
     </tbody></table></div>`:'<div class="alert ai">Tiada kursus.</div>';
-  }catch(e){$('kuc').innerHTML='<div class="alert ad">Ralat.</div>'}
+  }catch(e){load.fail()}
 }
 async function batalKursusAdmin(id,nama){
   if(!confirm(`Batalkan kursus "${nama}"?`))return;

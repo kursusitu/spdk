@@ -135,7 +135,7 @@ function harness({ role = 'admin', token = TOKEN, fetchImpl } = {}) {
       const result = fetchImpl ? await fetchImpl(body, options) :
         body.action === 'getSenaraiKursus' ? courseList() :
         body.action === 'previewCpdSync' ? preview() : { success: true, counts: counts() };
-      return { ok: true, json: async () => result };
+      return { ok: true, status: 200, headers: { get: () => "application/json" }, json: async () => result };
     }
   };
   vm.createContext(context);

@@ -22,7 +22,7 @@ function loadAppScript() {
       getElementById: () => null,
       createElement: () => ({ remove() {} })
     },
-    fetch: async () => ({ ok: true, json: async () => ({}) }),
+    fetch: async () => ({ ok: true, status: 200, headers: { get: () => "application/json" }, json: async () => ({}) }),
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     navigator: {},

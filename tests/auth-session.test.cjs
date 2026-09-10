@@ -17,7 +17,7 @@ function storage(initial = {}) {
 }
 
 function response(data) {
-  return { ok: true, json: async () => data };
+  return { ok: true, status: 200, headers: { get: () => "application/json" }, json: async () => data };
 }
 
 function createHarness({ token = '', role = '', nama = '', hash = '#dashboard', fetchImpl }) {
