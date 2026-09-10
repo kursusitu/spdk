@@ -90,7 +90,7 @@ Portal SPDK menggunakan tema **Clay 3D** — design language yang konsisten mere
 
 Repo ini berfungsi sebagai **PWA shell** untuk SPDK ITU:
 
-**Versi semasa:** `v1.0.1`
+**Versi semasa:** `v1.0.16` (`9ecf88c`). GAS kekal Version 64 (`4f76a25`).
 
 | Fail | Fungsi |
 |---|---|
@@ -131,6 +131,22 @@ pengguna refresh untuk mendapatkan versi PWA terkini.
 ---
 
 ## Kemas Kini Terkini
+
+### PWA v1.0.16 — Transport Resilience (10 September 2026)
+
+Release frontend-only `9ecf88c`: **Improve GAS connection resilience and retry handling**.
+Production smoke **PASS** disahkan pemilik: Dashboard/Urus Kursus lancar dan
+pemilihan/pemuatan kursus responsif. Transport CLOSED buat masa ini; tiada
+perubahan backend atau migrasi data.
+
+- Allowlist action bacaan eksplisit, maksimum tiga percubaan dengan backoff 500/1500 ms.
+- Mutation/unknown action tiada blind retry; `renewSession` kekal tanpa generic retry.
+- Structured HTTP/non-JSON/network/timeout handling dan perlindungan token/view lapuk.
+- Dashboard/Urus Kursus memaparkan reconnect/ralat dengan retry manual, bukan data kosong palsu.
+- Gate release: 39 ujian transport dan 216/216 PWA; browser desktop/mobile PASS.
+
+Kontrak lengkap: [Transport Audit](tests/TRANSPORT_AUDIT.md).
+Automatic Course Lifecycle dan CPD Phase 2 Manual Preview belum dimulakan.
 
 ### PWA v1.0.1 - Sync Layout Sijil
 

@@ -1,7 +1,11 @@
-# Transport resilience — local review, 10 September 2026
+# Transport resilience — released / closed, 10 September 2026
 
-Baseline: PWA 47dc9fc / 1.0.15, backend 4f76a25 (reported GAS v64).
-Controlled frontend release: 1.0.16. Backend source and GAS deployment unchanged.
+Pre-release baseline: PWA 47dc9fc / 1.0.15.
+Current production: PWA **1.0.16**, commit **9ecf88c**; GAS **v64**, backend
+**4f76a25**. Controlled frontend-only release; no backend change or data migration.
+Production smoke **PASS**, confirmed by the owner: Dashboard and Urus Kursus
+load smoothly; course selection/loading is responsive. Transport is CLOSED for now.
+Automatic Course Lifecycle and CPD Phase 2 Manual Preview have not started.
 Release note: Improve GAS connection resilience and retry handling
 
 ## Source review and action classification
@@ -90,6 +94,7 @@ means bootstrap may still require manual retry during a Google outage.
 
 APP_VERSION, sw.js cache and version.json are bumped together to 1.0.16.
 The narrow allowlist is retained. The release gate passes 39 transport tests,
-216 full PWA tests and a desktop/mobile mock-browser check. Actual production
-redirect behavior requires a separate post-push smoke check. Backend regression
+216 full PWA tests and a desktop/mobile mock-browser check. The owner confirmed
+the post-push production smoke PASS; this documentation alignment did not repeat
+it or capture new Network evidence. Backend regression
 was not necessary here: backend source and all business actions remain unchanged.
