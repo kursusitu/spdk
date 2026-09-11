@@ -438,6 +438,18 @@ function showUpdatePopup(nextVersion,dismissKey){
     reload();
   });
 }
+function courseLifecycleBadge(k){
+  if(!k.statusLifecycle)return badge(k.statusEfektif||k.status||'aktif');
+  const labels={akan_datang:['bm','Akan Datang'],aktif:['ba','Aktif'],tamat:['bb','Tamat'],dibatal:['bt','Dibatalkan'],perlu_semakan:['bt','Perlu Semakan']};
+  const b=labels[k.statusLifecycle]||labels.perlu_semakan;
+  return '<span class="badge '+b[0]+'">'+b[1]+'</span>';
+}
+function courseQuotaBadge(k){
+  return k.statusKuota==='penuh'?'<span class="badge bm">Penuh</span>':'';
+}
+function courseLifecycleSummary(s){
+  return s?'<p style="font-size:13px;color:var(--muted)">Akan Datang: '+(s.akan_datang||0)+' · Dibatalkan: '+(s.dibatal||0)+' · Perlu Semakan: '+(s.perlu_semakan||0)+'</p>':'';
+}
 function badge(s){
   const m={menunggu:'bm',lulus:'bl',tolak:'bt',batal:'bb',aktif:'ba',penuh:'bm'};
   const lb={menunggu:'Menunggu',lulus:'Lulus',tolak:'Ditolak',batal:'Dibatal',aktif:'Aktif',penuh:'Penuh'};
@@ -1144,7 +1156,7 @@ async function loadDashPeserta(){
     </div>
     <div class="card"><h3 style="margin-bottom:16px;font-size:16px">Kursus Terkini</h3>
     ${(d.pendaftaran||[]).length?`<div class="tw"><table><thead><tr><th>Kursus</th><th>Tarikh</th><th>Status</th></tr></thead><tbody>
-      ${d.pendaftaran.map(k=>`<tr><td>${k.namaKursus}</td><td>${k.tarikhKursus||'-'}</td><td>${badge(k.status)}</td></tr>`).join('')}
+      ${d.pendaftaran.map(k=>`<tr><td>${k.namaKursus}${k.statusLifecycle?'<div>'+courseLifecycleBadge(k)+'</div>':''}</td><td>${k.tarikhKursus||'-'}</td><td>${badge(k.status)}</td></tr>`).join('')}
     </tbody></table></div>`:'<p style="color:#6b7280;font-size:14px">Tiada pendaftaran kursus lagi.</p>'}
     </div>`;
   }catch(e){load.fail()}
@@ -1160,12 +1172,13 @@ async function loadDashAdmin(){
     const kt=d.kursusTamat||[];
     $('dc').innerHTML=`
     <div class="sg">
-      <div class="sc"><div class="si" style="background:#eff6ff">📚</div><div class="sn">${d.statKursus||0}</div><div class="sl">Kursus Aktif</div></div>
+      <div class="sc"><div class="si" style="background:#eff6ff">📚</div><div class="sn">${d.statLifecycle?d.statLifecycle.aktif:d.statKursus||0}</div><div class="sl">Kursus Aktif</div></div>
       <div class="sc"><div class="si" style="background:#fefce8">⏳</div><div class="sn">${d.statMenunggu||0}</div><div class="sl">Menunggu Pengesahan</div></div>
       <div class="sc"><div class="si" style="background:#eff6ff">👥</div><div class="sn">${d.statPeserta||0}</div><div class="sl">Jumlah Peserta</div></div>
       <div class="sc"><div class="si" style="background:#fdf4ff">🎓</div><div class="sn">${d.statEcert||0}</div><div class="sl">eCERT Dijana</div></div>
-      <div class="sc"><div class="si" style="background:#f3f4f6">✅</div><div class="sn">${d.statTamat||0}</div><div class="sl">Kursus Tamat</div></div>
+      <div class="sc"><div class="si" style="background:#f3f4f6">✅</div><div class="sn">${d.statLifecycle?d.statLifecycle.tamat:d.statTamat||0}</div><div class="sl">Kursus Tamat</div></div>
     </div>
+    ${courseLifecycleSummary(d.statLifecycle)}
     <div class="card" style="margin-bottom:16px">
       <div class="ph" style="margin-bottom:12px"><h3 style="font-size:15px">Pendaftaran Menunggu Pengesahan</h3><a href="#admin-pendaftaran" style="font-size:13px">Lihat Semua →</a></div>
       ${pm.length?`<div class="tw"><table><thead><tr><th>Nama Peserta</th><th>Kursus</th><th>Tarikh Daftar</th><th>Status</th></tr></thead><tbody>
@@ -1196,8 +1209,9 @@ function pgKatalog(){
             :`<button class="btn btn-primary btn-sm" onclick="daftarKursus('${k.courseId}','${k.namaKursus.replace(/'/g,'')}')">${state.buttonText}</button>`;
           return`<div class="card"><div style="font-weight:700;font-size:16px;margin-bottom:8px">${k.namaKursus}</div>
         <div style="font-size:13px;color:#6b7280;margin-bottom:12px">${formatJulatTarikhBm(k.tarikhMulaInput||k.tarikhMula,k.tarikhTamatInput||k.tarikhTamat)}</div>
-        <div style="display:inline-block;background:#eff6ff;color:#1e429f;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:600;margin-bottom:10px">${state.statusLabel}</div>
+        <div style="display:inline-block;background:#eff6ff;color:#1e429f;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:600;margin-bottom:10px">${k.statusLifecycle?'Pendaftaran: '+(state.disabled?state.buttonText.replace(/^Pendaftaran /,''):'Dibuka'):state.statusLabel}</div>
         <div style="font-size:13px;margin-bottom:${state.infoText?'8px':'16px'}">${k.penerangan||''}</div>
+        <div style="margin-bottom:10px">${k.statusLifecycle?courseLifecycleBadge(k):''} ${courseQuotaBadge(k)}</div>
         ${kuota}
         ${state.infoText?`<div style="font-size:13px;color:#6b7280;margin-bottom:16px">${state.infoText}</div>`:''}
         ${action}</div>`;
@@ -2081,7 +2095,7 @@ async function loadKursus(){
         const canEdit=statusAsal==='aktif'||statusAsal==='penuh';
         const namaEsc=String(k.namaKursus||'').replace(/'/g,'');
         const peserta=k.hadPeserta==null?`${k.jumlahPeserta||0}`:`${k.jumlahPeserta||0} / ${k.hadPeserta}<div style="font-size:12px;color:var(--muted)">Baki ${k.bakiTempat} tempat</div>`;
-        return `<tr><td><div style="font-weight:600">${escHtml(k.namaKursus)}</div><div style="font-size:12px;color:var(--muted)">${escHtml(k.penerangan||'')}</div></td><td>${k.tarikhMulaInput||'-'}${k.tarikhTamatInput&&k.tarikhTamatInput!==k.tarikhMulaInput?' - '+k.tarikhTamatInput:''}<div style="font-size:12px;color:var(--muted)">${k.masaMula&&k.masaTamat?escHtml(k.masaMula+' - '+k.masaTamat):''}</div></td><td>${escHtml(k.tempat||'-')}</td><td>${peserta}</td><td>${badge(k.status||'aktif')}</td>
+        return `<tr><td><div style="font-weight:600">${escHtml(k.namaKursus)}</div><div style="font-size:12px;color:var(--muted)">${escHtml(k.penerangan||'')}</div></td><td>${k.tarikhMulaInput||'-'}${k.tarikhTamatInput&&k.tarikhTamatInput!==k.tarikhMulaInput?' - '+k.tarikhTamatInput:''}<div style="font-size:12px;color:var(--muted)">${k.masaMula&&k.masaTamat?escHtml(k.masaMula+' - '+k.masaTamat):''}</div></td><td>${escHtml(k.tempat||'-')}</td><td>${peserta} ${courseQuotaBadge(k)}</td><td>${courseLifecycleBadge(k)}</td>
       <td><div style="display:flex;gap:6px;flex-wrap:wrap">${canEdit?`<button class="btn btn-secondary btn-sm" onclick="modalKursus(${i})">Edit</button>`:''}${statusAsal==='tamat'&&['admin','superadmin'].includes(S.role)?`<button class="btn btn-secondary btn-sm" onclick="modalTetapanCpd(${i})">Tetapan CPD</button>`:''}${statusAsal==='aktif'||statusAsal==='penuh'?`<button class="btn btn-danger btn-sm" onclick="batalKursusAdmin('${k.courseId}','${namaEsc}')">Batal</button>`:''}</div></td></tr>`;
       }).join('')}
     </tbody></table></div>`:'<div class="alert ai">Tiada kursus.</div>';
@@ -2942,7 +2956,7 @@ function laporanKpiCard(icon, background, value, label, subtext, suffix) {
 }
 
 function laporanRingkasanHtml(d) {
-  var k = d.statKursus || {};
+  var k = d.statLifecycle || d.statKursus || {};
   var p = d.statPeserta || {};
   var s = d.statSijil || {};
   var h = d.statKehadiran || {};
@@ -2960,7 +2974,7 @@ function laporanRingkasanHtml(d) {
         'Peserta: ' + laporanNombor(s.jumlahPeserta) + ' · Penceramah: ' + laporanNombor(s.jumlahPenceramah)) +
       laporanKpiCard('✅', '#fefce8', h.purataPct, 'Purata Kehadiran',
         laporanNombor(h.jumlahHadir) + ' daripada ' + laporanNombor(h.jumlahPeluang) + ' slot peserta-hari', '%') +
-    '</div>' + warning +
+    '</div>' + courseLifecycleSummary(d.statLifecycle) + warning +
     '<div class="lr-section-title" style="margin-bottom:10px">Status Pendaftaran</div>' +
     '<div class="lr-status-grid">' +
       laporanStatusItem('Lulus', st.lulus, '#057a55') +
@@ -3023,10 +3037,10 @@ function laporanKursusPanelHtml() {
   return '<div class="card" style="margin-bottom:16px"><div class="lr-filters">' +
       '<input id="lr-kursus-carian" type="search" placeholder="Cari nama kursus" oninput="laporanRenderKursus()">' +
       '<select id="lr-kursus-status" onchange="laporanRenderKursus()"><option value="">Semua Status</option>' +
-        '<option value="aktif">Aktif</option><option value="penuh">Penuh</option><option value="tamat">Tamat</option>' +
-        '<option value="dibatal">Dibatal</option></select>' +
+        '<option value="akan_datang">Akan Datang</option><option value="aktif">Aktif</option><option value="tamat">Tamat</option>' +
+        '<option value="dibatal">Dibatalkan</option><option value="perlu_semakan">Perlu Semakan</option></select>' +
       '<select id="lr-kursus-kuota" onchange="laporanRenderKursus()"><option value="">Semua Kuota</option>' +
-        '<option value="terhad">Terhad</option><option value="tanpa_had">Tanpa Had</option></select>' +
+        '<option value="terhad">Terhad</option><option value="tanpa_had">Tanpa Had</option><option value="penuh">Penuh</option></select>' +
     '</div></div>' +
     '<div class="lr-section-head"><div class="lr-section-title">Laporan Kursus</div><span id="lr-kursus-count" class="lr-count">0 rekod</span></div>' +
     '<div class="card lr-table-card"><div class="tw"><table><thead><tr><th>Kursus</th><th>Status</th><th>Kuota</th>' +
@@ -3040,7 +3054,8 @@ function laporanTapisKursus(rows, filters) {
   var quota = String(filters.kuota || '').trim();
   return (rows || []).filter(function(row) {
     if (query && String(row.namaKursus || '').toLowerCase().indexOf(query) === -1) return false;
-    if (status && String(row.statusEfektif || '').toLowerCase() !== status) return false;
+    if (status && String(row.statusLifecycle || row.statusEfektif || '').toLowerCase() !== status) return false;
+    if (quota === 'penuh' && row.statusKuota !== 'penuh') return false;
     if (quota === 'terhad' && row.kuotaTanpaHad) return false;
     if (quota === 'tanpa_had' && !row.kuotaTanpaHad) return false;
     return true;
@@ -3075,7 +3090,7 @@ function laporanKursusRowsHtml(rows) {
         laporanNombor(k.bilHadir) + ' / ' + laporanNombor(k.jumlahPeluangKehadiran) + ' slot hadir</div>';
     return '<tr><td><div class="lr-cell-main">' + escHtml(k.namaKursus || '-') + '</div>' +
         '<div class="lr-cell-sub">' + dateRange + '</div><div class="lr-cell-sub">' + escHtml(k.tempat || '-') + '</div></td>' +
-      '<td>' + laporanStatusBadge(k.statusEfektif) + '</td><td class="lr-compact">' + quota + '</td>' +
+      '<td>' + courseLifecycleBadge(k) + '</td><td class="lr-compact">' + courseQuotaBadge(k) + quota + '</td>' +
       '<td class="lr-compact"><strong>Jumlah: ' + laporanNombor(k.bilDaftar) + '</strong>' +
         '<div>Lulus: ' + laporanNombor(k.bilLulus) + '</div><div>Ditolak: ' + laporanNombor(k.bilTolak) + '</div></td>' +
       '<td class="lr-compact">' + attendance + '</td><td>' + laporanRatingHtml(k.puratRating) + '</td>' +
